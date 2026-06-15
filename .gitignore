@@ -1,52 +1,50 @@
-# Build output
-bin/
-obj/
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js
+.next/
 out/
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
+build/
+dist/
+next-env.d.ts
 
-# Visual Studio / Rider / VS Code
-.vs/
-.vscode/
-.idea/
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
+# Production / cache
+.turbo/
+*.tsbuildinfo
 
-# Test / coverage
-[Tt]est[Rr]esult*/
-TestResults/
-*.coverage
-*.coveragexml
-coverage*.json
-coverage*.xml
-coverage*.info
+# Testing / coverage
+coverage/
+.nyc_output/
 
-# NuGet
-*.nupkg
-*.snupkg
-.nuget/
-packages/
-project.lock.json
-project.fragment.lock.json
-
-# Secrets / env
+# Env / secrets
 .env
 .env.*
 !.env.example
-appsettings.*.local.json
-secrets.json
-*.pfx
-*.key
 
 # Logs
 *.log
-logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Vercel
+.vercel/
 
 # OS
 .DS_Store
