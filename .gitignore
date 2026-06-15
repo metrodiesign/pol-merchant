@@ -1,32 +1,27 @@
-# Dependencies
+# Personal, per-project overrides — never commit
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Dependencies / build
 node_modules/
-.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# Next.js
-.next/
-out/
-build/
 dist/
+build/
+out/
+__pycache__/
+*.pyc
+.next/
 next-env.d.ts
-
-# Production / cache
-.turbo/
-*.tsbuildinfo
-
-# Testing / coverage
 coverage/
-.nyc_output/
-
-# Env / secrets
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+.turbo/
+.playwright-mcp/
 .env
 .env.*
 !.env.example
+
+# Deploy
+.vercel/
 
 # Logs
 *.log
@@ -35,16 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Editor / IDE
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-
-# Vercel
-.vercel/
+# Certs
+*.pem
 
 # OS
 .DS_Store
