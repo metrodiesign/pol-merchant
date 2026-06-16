@@ -47,9 +47,8 @@ const nunitoSans = Nunito_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Payment Orchestration Layer",
-  description:
-    "Payment Orchestration Layer — merchant console for insurance agents and brokers",
+  title: "Minimal UI",
+  description: "Minimal UI — dashboard template",
 };
 
 export default function RootLayout({

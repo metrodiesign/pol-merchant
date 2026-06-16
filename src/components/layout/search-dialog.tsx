@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import SimpleBar from "simplebar-react";
 import { useRouter } from "next/navigation";
-import { Search, FilePlus } from "lucide-react";
+import { Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,16 +34,7 @@ const navItems: FlatItem[] = navConfig.flatMap((group) =>
   ]),
 );
 
-const actionItems: FlatItem[] = [
-  {
-    title: "สร้างใบแจ้งหนี้ใหม่",
-    path: "/invoices/new",
-    group: "การกระทำ",
-    kind: "action",
-    Icon: FilePlus,
-    description: "ออกใบแจ้งหนี้ส่งลิงก์ชำระให้ลูกค้า",
-  },
-];
+const actionItems: FlatItem[] = [];
 
 interface SearchDialogProps {
   /** "white" = on coloured topbar (default); "grey" = on transparent topbar */
@@ -65,13 +56,6 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
-
-  // Listen for the custom event dispatched by GlobalHotkeys (`?` key)
-  useEffect(() => {
-    const onOpenPalette = () => setOpen(true);
-    window.addEventListener("centropay:open-palette", onOpenPalette);
-    return () => window.removeEventListener("centropay:open-palette", onOpenPalette);
   }, []);
 
   const handleOpenChange = (next: boolean) => {
@@ -99,8 +83,8 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
   // Group results by their `group` field
   const grouped = useMemo(() => {
     const map = new Map<string, FlatItem[]>();
-    // Ensure "การกระทำ" section appears first
-    const order = ["การกระทำ"];
+    // Optional section ordering (nav sections fall back to insertion order).
+    const order: string[] = [];
     results.forEach((item) => {
       if (!map.has(item.group)) map.set(item.group, []);
       map.get(item.group)!.push(item);
