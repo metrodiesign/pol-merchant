@@ -99,7 +99,7 @@
 
 ## Tooling
 
-- scripts: `dev` = `next dev -p 5200`, `start` = `next start -p 5200`, `build` = `next build`
+- scripts: `dev` = `next dev -p 5300`, `start` = `next start -p 5300`, `build` = `next build`
   (Next 16 ใช้ Turbopack เป็น default), `lint` = `eslint`.
 - **test runner = vitest** (`vitest` ^4.1.9, config `vitest.config.ts`: alias `@`→`./src`, `environment: node`, include `src/**/*.test.ts`); script `test` = `vitest run`. gate `.ai/bin/gate-task.sh` auto-detect `"test"` → รัน `npm test` เป็น code-green ตอน mark `[x]`. tests co-located `src/**/*.test.ts` (auth, policy, producer).
 - typecheck: ใช้ `tsc --noEmit` หรือ `next build` (ยังไม่มี script `typecheck` แยก — เพิ่มได้เพื่อให้ gate auto-detect).
