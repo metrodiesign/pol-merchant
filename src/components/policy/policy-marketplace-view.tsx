@@ -1,0 +1,123 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Policy, PolicyStatus } from "@/types/policy";
+import { CATEGORY_OPTIONS, PAYMENT_STATUS_OPTIONS } from "@/lib/policy/policy";
+import {
+  usePolicyTableWithCart,
+  ROWS_PER_PAGE_OPTIONS,
+} from "@/hooks/use-policy-table-with-cart";
+import { DataTable } from "@/components/table/data-table";
+import { PolicyListToolbar } from "./policy-list-toolbar";
+import { PremiumCartBar } from "./premium-cart-bar";
+import { PremiumCheckoutDialog } from "./premium-checkout-dialog";
+
+interface CheckoutState {
+  /** รายการที่ review ใน dialog ก่อนไปหน้า checkout */
+  policies: Policy[];
+}
+
+export function PolicyMarketplaceView() {
+  const [dense, setDense] = useState(false);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [status, setStatus] = useState<PolicyStatus | "all">("all");
+  const [checkout, setCheckout] = useState<CheckoutState | null>(null);
+
+  const router = useRouter();
+
+  const globalFilter = useMemo(
+    () => ({ search, category, customerName, startDate, endDate, status }),
+    [search, category, customerName, startDate, endDate, status],
+  );
+
+  const { table, filteredCount, cart } = usePolicyTableWithCart({
+    globalFilter,
+    onBuyNow: (policy) => setCheckout({ policies: [policy] }),
+  });
+
+  function resetToFirstPage() {
+    table.setPageIndex(0);
+  }
+
+  function openCartCheckout() {
+    setCheckout({ policies: cart.items });
+  }
+
+  function goToCheckout(policies: Policy[]) {
+    const ids = policies.map((p) => p.id).join(",");
+    router.push(`/policy/checkout?ids=${encodeURIComponent(ids)}`);
+  }
+
+  return (
+    <>
+      <div
+        className="min-w-0 overflow-hidden rounded-2xl bg-card"
+        style={{ boxShadow: "var(--shadow-card)" }}
+      >
+        <PolicyListToolbar
+          search={search}
+          onSearchChange={(v) => {
+            setSearch(v);
+            resetToFirstPage();
+          }}
+          category={category}
+          onCategoryChange={(v) => {
+            setCategory(v);
+            resetToFirstPage();
+          }}
+          categoryOptions={CATEGORY_OPTIONS}
+          customerName={customerName}
+          onCustomerNameChange={(v) => {
+            setCustomerName(v);
+            resetToFirstPage();
+          }}
+          startDate={startDate}
+          onStartDateChange={(v) => {
+            setStartDate(v);
+            resetToFirstPage();
+          }}
+          endDate={endDate}
+          onEndDateChange={(v) => {
+            setEndDate(v);
+            resetToFirstPage();
+          }}
+          status={status}
+          onStatusChange={(v) => {
+            setStatus(v as PolicyStatus | "all");
+            resetToFirstPage();
+          }}
+          statusOptions={PAYMENT_STATUS_OPTIONS}
+        />
+        <DataTable
+          table={table}
+          total={filteredCount}
+          dense={dense}
+          onDenseChange={setDense}
+          rowsPerPageOptions={ROWS_PER_PAGE_OPTIONS}
+          searchQuery={search}
+          showSelectionAction={false}
+        />
+      </div>
+
+      <PremiumCartBar
+        items={cart.items}
+        count={cart.count}
+        total={cart.total}
+        onRemove={cart.remove}
+        onProceed={openCartCheckout}
+      />
+
+      <PremiumCheckoutDialog
+        open={checkout !== null}
+        policies={checkout?.policies ?? []}
+        onConfirm={() => goToCheckout(checkout?.policies ?? [])}
+        onClose={() => setCheckout(null)}
+      />
+    </>
+  );
+}

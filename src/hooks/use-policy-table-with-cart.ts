@@ -1,235 +1,97 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useReducer } from "react";
 import {
   getCoreRowModel,
-  getSortedRowModel,
   getFilteredRowModel,
+  getSortedRowModel,
   getPaginationRowModel,
-  type SortingState,
-  type RowSelectionState,
-  type ColumnFiltersState,
-  type PaginationState,
   type Table,
 } from "@tanstack/react-table";
-import { useDataTable } from "@/hooks/use-data-table";
-import type { Policy, PaymentStatus } from "@/types/policy";
+import "@/types/table-meta";
+import type { Policy } from "@/types/policy";
 import { POLICIES } from "@/lib/mock/policies";
-import { policyColumns } from "@/components/dashboard/policy/policy-columns";
+import {
+  matchesPolicyFilter,
+  sumPremium,
+  type PolicyFilter,
+} from "@/lib/policy/policy";
+import { cartReducer } from "@/lib/policy/cart";
+import { useDataTable } from "@/hooks/use-data-table";
+import { policyColumns } from "@/components/policy/policy-table-columns";
 
-export interface PolicyTableWithCart {
-  table: Table<Policy>;
-  tab: PaymentStatus | "all";
-  setTab: (value: PaymentStatus | "all") => void;
-  tabCounts: Array<{ label: string; value: PaymentStatus | "all"; count: number }>;
-  globalFilter: string;
-  setGlobalFilter: (value: string) => void;
-  dense: boolean;
-  setDense: (value: boolean) => void;
-  cartItems: Policy[];
-  cartTotal: number;
-  cartCount: number;
-  cartOpen: boolean;
-  setCartOpen: (open: boolean) => void;
-  removeFromCart: (id: string) => void;
-  clearCart: () => void;
-  handleTabChange: (value: PaymentStatus | "all") => void;
-  handlePaymentMethodChange: (value: string) => void;
-  handleSearchChange: (value: string) => void;
+const ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
+export { ROWS_PER_PAGE_OPTIONS };
+
+export interface PremiumCart {
+  items: Policy[];
+  count: number;
+  total: number;
+  has(id: string): boolean;
+  /** add/remove — กันซ้ำ (REQ-4.6, 4.7); ทุกสถานะเพิ่มได้ (user: ครบทุกรายการ) */
+  toggle(policy: Policy): void;
+  remove(id: string): void;
+  clear(): void;
 }
 
-const PAYMENT_TABS: Array<{ label: string; value: PaymentStatus | "all" }> = [
-  { label: "ทั้งหมด", value: "all" },
-  { label: "ชำระแล้ว", value: "paid" },
-  { label: "ชำระบางส่วน", value: "partial" },
-  { label: "ยังไม่ชำระ", value: "unpaid" },
-  { label: "เกินกำหนด", value: "overdue" },
-];
+interface UsePolicyTableWithCartParams {
+  globalFilter: PolicyFilter;
+  /** เปิด checkout ใบเดียว (ซื้อเลย) — ส่งจาก view ที่ถือ dialog state */
+  onBuyNow: (policy: Policy) => void;
+}
 
-export function usePolicyTableWithCart(): PolicyTableWithCart {
-  const [tab, setTab] = useState<PaymentStatus | "all">("all");
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [dense, setDense] = useState(false);
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 5,
-  });
+export function usePolicyTableWithCart({
+  globalFilter,
+  onBuyNow,
+}: UsePolicyTableWithCartParams): {
+  table: Table<Policy>;
+  filteredCount: number;
+  cart: PremiumCart;
+} {
+  const [items, dispatch] = useReducer(cartReducer, []);
 
-  // Persistent cart selection — survives tab switches
-  const [cartSelection, setCartSelection] = useState<RowSelectionState>({});
-  const [cartOpen, setCartOpen] = useState(false);
-
-  const filteredByTab = useMemo(
-    () =>
-      tab === "all"
-        ? POLICIES
-        : POLICIES.filter((p) => p.paymentStatus === tab),
-    [tab]
-  );
-
-  const tabCounts = useMemo(
-    () =>
-      PAYMENT_TABS.map((t) => ({
-        ...t,
-        count:
-          t.value === "all"
-            ? POLICIES.length
-            : POLICIES.filter((p) => p.paymentStatus === t.value).length,
-      })),
-    []
-  );
-
-  // Project cartSelection onto visible rows for TanStack Table
-  const visibleIds = useMemo(
-    () => new Set(filteredByTab.map((p) => p.id)),
-    [filteredByTab]
-  );
-
-  const rowSelection = useMemo(() => {
-    const projected: RowSelectionState = {};
-    for (const id of Object.keys(cartSelection)) {
-      if (cartSelection[id] && visibleIds.has(id)) {
-        projected[id] = true;
-      }
-    }
-    return projected;
-  }, [cartSelection, visibleIds]);
-
-  // When table row selection changes, merge back into cartSelection
-  const handleRowSelectionChange = useCallback(
-    (updaterOrValue: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
-      setCartSelection((prev) => {
-        const newRowSelection =
-          typeof updaterOrValue === "function"
-            ? updaterOrValue(
-                // Pass current projected selection as "prev" for the updater
-                Object.fromEntries(
-                  Object.entries(prev).filter(([id]) => visibleIds.has(id))
-                )
-              )
-            : updaterOrValue;
-
-        const next = { ...prev };
-        // Remove deselected visible rows
-        for (const id of visibleIds) {
-          if (!newRowSelection[id]) {
-            delete next[id];
-          }
-        }
-        // Add selected visible rows
-        for (const [id, selected] of Object.entries(newRowSelection)) {
-          if (selected) {
-            next[id] = true;
-          }
-        }
-        return next;
-      });
-    },
-    [visibleIds]
-  );
-
-  const coreRowModel = useMemo(() => getCoreRowModel(), []);
-  const sortedRowModel = useMemo(() => getSortedRowModel(), []);
-  const filteredRowModel = useMemo(() => getFilteredRowModel(), []);
-  const paginationRowModel = useMemo(() => getPaginationRowModel(), []);
-  const getRowId = useCallback((row: Policy) => row.id, []);
-
-  const table = useDataTable({
-    data: filteredByTab,
-    columns: policyColumns,
-    state: {
-      sorting,
-      rowSelection,
-      columnFilters,
-      globalFilter,
-      pagination,
-    },
-    onSortingChange: setSorting,
-    onRowSelectionChange: handleRowSelectionChange,
-    onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
-    onPaginationChange: setPagination,
-    autoResetPageIndex: false,
-    getCoreRowModel: coreRowModel,
-    getSortedRowModel: sortedRowModel,
-    getFilteredRowModel: filteredRowModel,
-    getPaginationRowModel: paginationRowModel,
-    getRowId,
-  });
-
-  // Derive cart items from persistent cartSelection against full dataset
-  const cartItems = useMemo(() => {
-    const selectedIds = Object.keys(cartSelection).filter(
-      (id) => cartSelection[id]
-    );
-    return POLICIES.filter((p) => selectedIds.includes(p.id));
-  }, [cartSelection]);
-
-  const cartTotal = useMemo(
-    () => cartItems.reduce((sum, p) => sum + p.premium, 0),
-    [cartItems]
-  );
-
-  const removeFromCart = useCallback((id: string) => {
-    setCartSelection((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-  }, []);
-
-  const clearCart = useCallback(() => {
-    setCartSelection({});
-  }, []);
-
-  const handleTabChange = useCallback(
-    (value: PaymentStatus | "all") => {
-      setTab(value);
-      table.setPageIndex(0);
-    },
-    [table]
-  );
-
-  const handlePaymentMethodChange = useCallback(
-    (value: string) => {
-      if (value) {
-        table.getColumn("paymentMethod")?.setFilterValue(value);
-      } else {
-        table.getColumn("paymentMethod")?.setFilterValue(undefined);
-      }
-      table.setPageIndex(0);
-    },
-    [table]
-  );
-
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setGlobalFilter(value);
-      table.setPageIndex(0);
-    },
-    [table]
-  );
-
-  return {
-    table,
-    tab,
-    setTab,
-    tabCounts,
-    globalFilter,
-    setGlobalFilter,
-    dense,
-    setDense,
-    cartItems,
-    cartTotal,
-    cartCount: cartItems.length,
-    cartOpen,
-    setCartOpen,
-    removeFromCart,
-    clearCart,
-    handleTabChange,
-    handlePaymentMethodChange,
-    handleSearchChange,
+  const cart: PremiumCart = {
+    items,
+    count: items.length,
+    total: sumPremium(items),
+    has: (id) => items.some((i) => i.id === id),
+    toggle: (policy) =>
+      dispatch(
+        items.some((i) => i.id === policy.id)
+          ? { type: "remove", id: policy.id }
+          : { type: "add", policy },
+      ),
+    remove: (id) => dispatch({ type: "remove", id }),
+    clear: () => dispatch({ type: "clear" }),
   };
+
+  const table = useDataTable<Policy>({
+    data: POLICIES,
+    columns: policyColumns,
+    getRowId: (p) => p.id,
+    enableSortingRemoval: false,
+    autoResetPageIndex: false,
+    state: { globalFilter },
+    globalFilterFn: (row, _columnId, value) =>
+      matchesPolicyFilter(row.original, value),
+    meta: {
+      cart: {
+        has: cart.has,
+        toggle: cart.toggle,
+        buyNow: onBuyNow,
+      },
+    },
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      sorting: [{ id: "vcp", desc: false }],
+      pagination: { pageIndex: 0, pageSize: 10 },
+    },
+  });
+
+  const filteredCount = table.getFilteredRowModel().rows.length;
+
+  return { table, filteredCount, cart };
 }

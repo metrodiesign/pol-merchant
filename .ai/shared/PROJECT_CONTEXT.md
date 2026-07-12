@@ -5,68 +5,83 @@
 
 ## Purpose
 
-โปรเจกต์ชื่อ **Payment Orchestration Layer (POL)** — repo นี้คือ frontend console ฝั่ง merchant ของ POL
-ให้ตัวแทน/นายหน้าประกันภัยรับชำระค่าเบี้ยประกันข้ามหลาย PSP และหลายช่องทางผ่าน orchestration layer เดียว
-แล้วบริหาร payment lifecycle, การกระทบยอด (reconciliation) และ integration ทั้งหมดได้จากที่เดียว
-(ชื่อ "CentroPay" ที่ปรากฏใน mock data เป็น brand ตัวอย่างเท่านั้น ไม่ใช่ชื่อโปรเจกต์)
+**Payment Orchestration Layer (POL) — Admin** คือ frontend ของ **admin portal ภายในองค์กร
+(internal-only, พนักงานเท่านั้น)** สำหรับทีม payment operations ของบริษัทประกัน. ระบบ POL คือชั้นที่
+รับชำระเบี้ยประกัน (policy premium) แล้ว route ธุรกรรมไปยังหลาย Payment Service Provider
+(PSP เช่น 2C2P, Omise) ตามกฎ routing; frontend นี้คือหน้าจอบริหารของ POL — ติดตามสถานะธุรกรรม
+ตลอด lifecycle, จัดการ payment link, originator (สาขา/ตัวแทน/นายหน้า/connected app), webhook,
+API client, audit และ report/reconciliation.
+
+One-line pitch: ที่เดียวให้พนักงานภายในมองเห็นและปฏิบัติการกับการรับชำระเบี้ยประกันข้าม PSP
+ทั้งหมด — capture/void/refund, routing, กระทบยอด, และ audit — บนหน้าจอ admin ตัวเดียว.
 
 ## Target Users
 
-ผลิตภัณฑ์นี้เป็น merchant-only console — ผู้ใช้คือฝั่งร้านค้า/ตัวแทนที่รับเงินเท่านั้น ไม่ใช่ end-customer
-และไม่ใช่ผู้ดูแล PSP
+ผู้ใช้คือ **พนักงานภายในองค์กรเท่านั้น** (ไม่ใช่ merchant หรือลูกค้าปลายทาง). RBAC แยกตาม role
+(ดู `src/types/role.ts`, `src/lib/mock/roles.ts`):
 
-- ตัวแทนประกันภัย (agent) และนายหน้าประกันภัย (broker) — กลุ่มผู้ใช้หลัก ออกใบแจ้งหนี้/ลิงก์ชำระเงิน
-  ติดตามธุรกรรม และดูรายงานกระทบยอดของตัวเอง
-- สาขา (branch) และ sub-user ภายใต้ตัวแทน/นายหน้า — เข้าถึงตามสิทธิ์ที่กำหนดด้วย RBAC (role-based)
-- ผู้ริเริ่มธุรกรรม (transaction originator) เป็นหนึ่งใน: branch | agent | broker | staff | app
-  (app = แอป/ระบบองค์กรที่เชื่อมต่อเข้ามาผ่าน API client; staff = พนักงานภายใน)
+- **System Admin** (`admin.system`) — คุมทั้งระบบ: จัดการ user/role, ตั้งค่า PSP/webhook/API client, ดู audit
+- **Finance Admin** (`admin.finance`) — refund, reconciliation, financial report (PSP/channel breakdown, settlement)
+- **Operator** (`admin.operator`) — ปฏิบัติการธุรกรรม: capture/void/refund, สร้าง payment link, ติดตามสถานะ
+- **Viewer** (`admin.viewer`) — read-only: ธุรกรรม, policy, report, audit
+
+> หมายเหตุ: RBAC model นิยาม `merchant.*` role ไว้ด้วย แต่นั่นเป็นของ **merchant portal ซึ่งเป็นคนละ surface**.
+> repo นี้คือ **admin portal** สำหรับพนักงานภายใน — การกำหนด merchant role/permission ทำผ่าน roles module
+> ของ admin เอง.
 
 ## Problem It Solves
 
-การรับชำระค่าเบี้ยประกันในวันนี้กระจัดกระจาย: หลาย PSP, หลายช่องทาง (card, qr, installment, wallet, bank), หลายสาขา
-และหลายตัวแทน ทำให้กระทบยอดยาก ตามสถานะธุรกรรมไม่ครบ และคุมสิทธิ์การเข้าถึงได้ลำบาก POL รวมทุก
-อย่างไว้ใน orchestration layer เดียว: ส่งธุรกรรมเข้า PSP ตาม routing rule ที่ตั้งไว้ ติดตามทุกสถานะใน
-lifecycle เดียวกัน กระทบยอดข้ามช่องทาง/PSP/ผู้ริเริ่ม และเปิดให้เชื่อมต่อระบบองค์กรผ่าน API/webhook โดยยัง
-คุมสิทธิ์ผู้ใช้ด้วย RBAC
+- **กระจายความเสี่ยง PSP** — รวมหลาย PSP ไว้หลังชั้น orchestration เดียว แล้วเลือก PSP อัตโนมัติ
+  ตามกฎ (channel/amount) เพื่อลด failure, คุม fee และเงื่อนไข settlement
+- **มองเห็นและปฏิบัติการรวมศูนย์** — ทีมภายในเห็นธุรกรรมทุกช่องทาง (card/QR/installment/wallet/bank)
+  และทำ capture/void/refund ได้จากที่เดียว แทนการสลับเข้าหลาย PSP console
+- **กระทบยอดและตรวจสอบ** — reconciliation (expected vs settled) + audit log ที่ลบไม่ได้
+  ครอบคลุมทุก sensitive action เพื่อ compliance และ forensics
+- **เชื่อมช่องทางขายและ integration** — ติดตาม originator (สาขา/ตัวแทน/นายหน้า/app),
+  จัดการ webhook ขาออก และ API client (OAuth2) สำหรับระบบที่มาเชื่อม
 
 ## Key Features
 
-ฟีเจอร์จัดกลุ่มตาม domain ใต้ `src/components/payment/<feature>/` (ส่วน domain layer มีจริง — ดู Non-Goals
-เรื่องสถานะ route):
+ฟีเจอร์หลักคือ payment domain ที่อยู่ใน `src/components/payment/*` (ดู [ARCHITECTURE.md](ARCHITECTURE.md)):
 
-- Dashboard — KPI grid, volume bar chart, สัดส่วน PSP (donut), channel breakdown, top originators,
-  recent transactions และ transaction drawer
-- Transactions — payment lifecycle, actions, bulk bar, columns, filter, KPI strip
-- Invoices & payment links — hosted payment preview/link, ฟอร์มออกใบแจ้งหนี้, columns, tabs, stat cards
-- PSP & routing — provider card, config modal, routing rules + routing-rule modal, history drawer
-  (PSP ที่รองรับในข้อมูล mock: 2C2P, Omise)
-- Webhooks — endpoints, API keys, event log, integration guide, payload drawer
-- API clients — list/row, create modal, secret reveal modal, KPI cards (จัดการ credential ของแอปที่เชื่อมต่อ)
-- Notifications — columns, filter, KPI strip, payload drawer, resend dialog
-- Users & permissions (RBAC) — users, roles (badge, editor drawer, columns), branches, agents
-- Audit — timeline, filter, detail drawer, stats
-- Reports — reconciliation table, breakdown ตาม channel/PSP/originator, date range
-- Apps — integration cards/grid (จุดเชื่อมต่อเดียวสำหรับแอปองค์กร)
-
-domain types อยู่ที่ `src/types/` (PascalCase types, ไฟล์ kebab-case) และ typed mock data อยู่ที่
-`src/lib/mock/<domain>.ts` โดยแยก data ออกจาก presentation ชัดเจน เนื้อหาเป็นภาษาไทย ครอบคลุมประเภท
-กรมธรรม์: ประกันรถยนต์ / ประกันชีวิต / ประกันสุขภาพ / ประกันอัคคีภัย / ประกันการเดินทาง / ประกันอุบัติเหตุ
+- **Dashboard** — KPI การรับชำระ (ยอดวันนี้, link ค้าง, succeeded/failed), volume trend, PSP split, channel breakdown, top originators
+- **Transactions** — list + filter (status/originator/channel/PSP), bulk capture/void/refund, detail drawer + lifecycle track, export
+- **Payment Links / Invoices** — สร้าง/ส่ง link เก็บเบี้ย, สถานะ (draft/pending/paid/overdue/voided), hosted payment preview
+- **PSP** — config provider (2C2P/Omise) + routing rules engine (priority, when/then), test connection
+- **API Clients** — OAuth2 client (scope, IP allowlist, usage), rotate secret
+- **Webhooks** — endpoint + event delivery log (type, txn, status, attempts, latency), test
+- **Audit** — audit log viewer พร้อม sensitive-action highlight, filter, drill-down
+- **Users & Roles** — admin user management (status, IDP: Azure AD/Google/LINE) + RBAC role/permission matrix
+- **Originators** — Branches (สาขา), Agents/Brokers/Staff (ตัวแทน/นายหน้า/พนักงาน), Connected Apps
+- **Reports** — PSP/channel/originator breakdown + reconciliation table
+- **Notifications** — ตั้งค่าแจ้งเตือน payment event และ webhook delivery
 
 ## Business Objectives
 
-- ให้ตัวแทน/นายหน้ารับชำระค่าเบี้ยได้ทุกช่องทางที่รองรับ (card, qr, installment, wallet, bank) ผ่าน orchestration
-  layer เดียว โดยไม่ต้องผูกกับ PSP รายใดรายหนึ่ง
-- ติดตาม payment lifecycle ของทุกธุรกรรมได้ครบจากจุดเดียว และกระทบยอดข้าม channel/PSP/originator ได้ถูกต้อง
-- คุมสิทธิ์การเข้าถึงด้วย RBAC ครบทั้งระดับ branch / agent / broker / sub-user
-- เปิดให้ระบบองค์กรเชื่อมต่อผ่าน API client + webhook ได้อย่างปลอดภัยและตรวจสอบย้อนหลังได้ผ่าน audit log
+เป้าหมายของผลิตภัณฑ์ (เชิงผลลัพธ์ที่สังเกตได้ — KPI ตัวเลขจริงต้องยืนยันกับ stakeholder ก่อนใช้เป็นเกณฑ์ผ่าน):
+
+- payment success rate สูงขึ้นจาก routing ที่เลือก PSP เหมาะกับ channel/amount
+- reconciliation match rate (expected vs settled) ครบถ้วน ตรวจสอบย้อนได้ทุกธุรกรรม
+- เวลาในการทำ refund/void ของ operator สั้นลง เทียบกับการเข้าหลาย PSP console
+- audit ครอบคลุม sensitive action 100% (ไม่มี action การเงินที่ไม่ถูกบันทึก)
 
 ## Non-Goals
 
-- ไม่ใช่ end-customer checkout app (หน้าจ่ายเงินฝั่งลูกค้า)
-- ไม่ใช่ PSP/admin backoffice (เครื่องมือฝั่งผู้ดูแล PSP)
-- ไม่ใช่ orchestration backend เอง — repo นี้เป็น frontend console ฝั่ง merchant ของ POL เท่านั้น
-- ยังไม่มี live backend: ข้อมูลทั้งหมดเป็น typed-mock (deterministic seeded RNG) เพื่อพัฒนา UI
-- payment routes ยังไม่ถูก wire เข้า App Router: domain layer (components + types + mock + hooks)
-  มีครบแล้ว แต่ปัจจุบันยังไม่มี route ใต้ `src/app` ที่ import `components/payment` — route ของ POL
-  จริงจะถูก wire ทีหลัง ขณะที่ `src/app/dashboard/*` และ scaffold หลายส่วนยังเป็นของ Minimal UI
-  (Minimals v700) template ที่จะถูก prune/แทนที่
+- **ไม่ใช่ merchant/customer-facing portal** — internal admin เท่านั้น
+- **ไม่ใช่ตัว hosted payment page** เอง — เป็นหน้าบริหารของระบบ ไม่ใช่หน้าที่ลูกค้าจ่ายเงิน
+- **ยังไม่มี backend จริง** — ทั้งหมดใช้ typed mock data (`src/lib/mock/*`); ไม่มี data fetching/auth จริง
+  ในชั้นนี้ (ดู Current State)
+- **Minimals template demo pages ไม่นับเป็นฟีเจอร์ของผลิตภัณฑ์** — หน้า analytics/ecommerce/banking/
+  booking/calendar/chat/mail/kanban/tour/post/job/product/order ฯลฯ ใต้ `src/app/dashboard/*`
+  คือ scaffolding ที่สืบทอดมาจาก admin template ไม่ใช่ขอบเขตของ POL admin
+
+## Current State (ground truth)
+
+- **Payment surface สร้างครบเป็น component library + types + mock** — `src/components/payment/*`
+  (16 โมดูล), `src/types/*` (transaction, psp, originator, role, permission, webhook, api-client,
+  audit, policy, invoice), `src/lib/mock/*` (originators/psp/transactions/webhooks/invoices/audit/roles/...)
+- **ยังไม่ wire เข้า Next.js route** — `src/app/dashboard/*` ปัจจุบันยังเป็นหน้า demo ของ Minimals
+  template; `nav-config.ts` อ้าง route ของ payment (`/transactions`, `/psp`, ...) ไว้แล้วแต่ยังไม่มี
+  `page.tsx` จริง. **การ integrate routing คืองานถัดไป.**
+- ผลิตภัณฑ์เป็น **frontend ล้วน, client-side**, ภาษาไทยทั้ง UI; stack/idiom ดู
+  [stack/nextjs.md](stack/nextjs.md).

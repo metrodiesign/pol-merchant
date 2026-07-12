@@ -21,6 +21,7 @@ interface TextFieldProps {
   startAdornment?: ReactNode;
   endAdornment?: ReactNode;
   className?: string;
+  maxLength?: number;
 }
 
 export function TextField({
@@ -41,6 +42,7 @@ export function TextField({
   startAdornment,
   endAdornment,
   className,
+  maxLength,
 }: TextFieldProps) {
   const reactId = useId();
   const fieldId = id ?? reactId;
@@ -61,7 +63,7 @@ export function TextField({
   const borderState = hasError
     ? "border-error ring-1 ring-inset ring-error"
     : focused
-      ? "border-grey-800 ring-1 ring-inset ring-grey-800"
+      ? "border-primary ring-1 ring-inset ring-primary"
       : "border-[var(--divider)]";
 
   const describedBy = error || helperText ? descId : undefined;
@@ -71,9 +73,8 @@ export function TextField({
       <label
         id={fieldId}
         className={cn(
-          "select-none text-sm font-medium",
+          "text-sm font-medium",
           hasError ? "text-error" : "text-grey-800",
-          disabled && "opacity-60",
         )}
       >
         {label}
@@ -100,13 +101,14 @@ export function TextField({
             value={current}
             placeholder={placeholder}
             disabled={disabled}
+            maxLength={maxLength}
             aria-invalid={hasError || undefined}
             aria-required={required || undefined}
             aria-describedby={describedBy}
             onChange={(e) => handleChange(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            className="w-full resize-none bg-transparent px-3.5 py-3 text-[15px] text-foreground outline-none placeholder:text-grey-500"
+            className="w-full resize-none bg-transparent px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-grey-500"
           />
         ) : (
           <input
@@ -116,6 +118,7 @@ export function TextField({
             value={current}
             placeholder={placeholder}
             disabled={disabled}
+            maxLength={maxLength}
             aria-invalid={hasError || undefined}
             aria-required={required || undefined}
             aria-describedby={describedBy}
@@ -123,7 +126,7 @@ export function TextField({
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             className={cn(
-              "h-full w-full bg-transparent px-3.5 text-[15px] text-foreground outline-none placeholder:text-grey-500",
+              "h-full w-full bg-transparent px-3.5 text-sm text-foreground outline-none placeholder:text-grey-500",
               startAdornment && "pl-2",
             )}
           />

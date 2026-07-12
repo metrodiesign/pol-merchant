@@ -1,44 +1,22 @@
-export type AuditAction =
-  | "create"
-  | "update"
-  | "delete"
-  | "approve"
-  | "reject"
-  | "login"
-  | "logout"
-  | "capture"
-  | "void"
-  | "refund"
-  | "export"
-  | "send";
+import type { TenantId } from "@/types/tenant";
 
-export type AuditEntity =
-  | "payment_link"
-  | "transaction"
-  | "policy"
-  | "user"
-  | "role"
-  | "apiclient"
-  | "psp"
-  | "webhook"
-  | "report"
-  | "config";
+export type AuditResult = "success" | "denied";
 
-export interface AuditActor {
-  id: string;
-  name: string;
-  portal: "admin" | "merchant";
-}
-
-export interface AuditLog {
-  id: string;
-  /** ISO string */
-  ts: string;
-  actor: AuditActor;
-  action: AuditAction;
-  entity: AuditEntity;
-  entityId: string;
+/**
+ * One immutable entry in the audit trail — a record of a sensitive action taken
+ * in the control plane. The trail is append-only: entries are never edited or
+ * deleted, only read. `before`/`after` capture the changed state as JSON strings
+ * for actions that mutate configuration (routing, roles, credentials).
+ */
+export interface AuditEntry {
+  id: string; // "AUD-000142"
+  timestamp: string; // ISO datetime
+  actor: string; // operator email
+  action: string; // dotted action key, e.g. "psp.credential.rotate"
+  entityId: string; // the affected resource id
+  tenantId: TenantId;
+  result: AuditResult;
   ip: string;
-  ua: string;
-  summary: string;
+  before?: string; // JSON string — prior state (mutating actions only)
+  after?: string; // JSON string — new state (mutating actions only)
 }

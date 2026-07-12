@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import SimpleBar from "simplebar-react";
 import {
   Sheet,
   SheetClose,
@@ -12,6 +13,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { accountUser } from "@/lib/mock/topbar";
+import { useAuth } from "@/components/auth/auth-provider";
+import { logout } from "@/lib/api/admin-api";
 
 // Nav icons — SVG paths extracted from minimals.cc live source
 function IconHome() {
@@ -91,6 +94,7 @@ interface AccountDrawerProps {
 }
 
 export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
+  const { me } = useAuth();
   const [open, setOpen] = useState(false);
   const [avatarStatus, setAvatarStatus] = useState<
     "idle" | "loading" | "loaded" | "error"
@@ -131,6 +135,9 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
           <X className="size-5" />
         </SheetClose>
 
+        {/* Scrollable body — SimpleBar autoHide (scrollbar ซ่อนเป็น default, โผล่ตอน scroll/hover) */}
+        <SimpleBar className="min-h-0 flex-1">
+        <div className="flex min-h-full flex-col">
         {/* Header */}
         <div className="flex flex-col items-center gap-1 px-6 pt-10 pb-4 text-center">
           {/* Avatar with animated conic ring */}
@@ -151,8 +158,14 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
             </Avatar>
           </div>
 
+          {/* identity จริงจาก /admin/me — email + tier. name/avatar ยัง mock (backend ไม่ส่ง — ดู coordination item). */}
           <p className="mt-2 text-base font-semibold text-grey-800">{accountUser.name}</p>
-          <p className="text-sm text-grey-600">{accountUser.email}</p>
+          <p className="text-sm text-grey-600">{me?.email ?? accountUser.email}</p>
+          {me && (
+            <span className="mt-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+              {me.tier === "Super" ? "Super Admin" : "Scoped Admin"}
+            </span>
+          )}
 
           {/* Account switcher */}
           <div className="mt-3 flex items-center gap-2">
@@ -223,7 +236,7 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
               <p className="mt-0.5 text-sm font-semibold text-white">Power up Productivity!</p>
               <button
                 type="button"
-                className="mt-4 rounded-lg px-2 py-1 text-[13px] font-bold text-grey-900"
+                className="mt-4 rounded-lg px-2 py-1 text-xs font-bold text-grey-900"
                 style={{ background: "rgb(255, 171, 0)" }}
               >
                 Upgrade to Pro
@@ -238,9 +251,15 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
             />
           </div>
 
-          {/* Logout */}
+          {/* Logout — ยิง BFF logout ตรง (POST /admin/auth/logout + CSRF) แล้วเด้ง /login.
+              .finally -> logout fail ก็ยังกลับ /login (guard เด้งไป SSO ต่อถ้า session ยังอยู่). */}
           <button
             type="button"
+            onClick={() => {
+              logout().finally(() => {
+                window.location.href = "/login";
+              });
+            }}
             className="mt-3 w-full rounded-lg py-2 text-sm font-bold transition-colors hover:opacity-90"
             style={{
               background: "rgba(255, 86, 48, 0.16)",
@@ -250,6 +269,8 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
             Logout
           </button>
         </div>
+        </div>
+        </SimpleBar>
       </SheetContent>
     </Sheet>
   );

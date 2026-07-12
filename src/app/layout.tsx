@@ -5,6 +5,8 @@ import {
   Inter,
   DM_Sans,
   Nunito_Sans,
+  Noto_Sans_Thai,
+  IBM_Plex_Mono,
 } from "next/font/google";
 import "./globals.css";
 import {
@@ -23,6 +25,16 @@ const barlow = Barlow({
   variable: "--font-barlow",
   subsets: ["latin"],
   weight: ["600", "700", "800"],
+  display: "swap",
+});
+
+// Thai glyph coverage — Public Sans/Barlow are Latin-only, so Thai text would
+// otherwise fall back to a heavier OS font. Loaded once and appended to every
+// font chain (see globals.css) so Thai renders at the correct weight.
+const notoSansThai = Noto_Sans_Thai({
+  variable: "--font-noto-thai",
+  subsets: ["thai"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -46,10 +58,17 @@ const nunitoSans = Nunito_Sans({
   display: "swap",
 });
 
+// Monospace data face for the control plane — machine identifiers, keys, refs.
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Payment Orchestration Layer",
-  description:
-    "Payment Orchestration Layer — merchant console for insurance agents and brokers",
+  title: "Dashboard - Minimal UI",
+  description: "Minimal UI dashboard clone",
 };
 
 export default function RootLayout({
@@ -60,7 +79,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${publicSans.variable} ${barlow.variable} ${inter.variable} ${dmSans.variable} ${nunitoSans.variable} h-full antialiased`}
+      className={`${publicSans.variable} ${barlow.variable} ${inter.variable} ${dmSans.variable} ${nunitoSans.variable} ${notoSansThai.variable} ${ibmPlexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

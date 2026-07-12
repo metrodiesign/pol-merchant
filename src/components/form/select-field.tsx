@@ -49,16 +49,16 @@ export function SelectField({
       isItemEqualToValue={(a, b) => a.value === b.value}
     >
       <div className={cn("flex w-full flex-col gap-1.5", className)}>
-        <label id={id} className="select-none text-sm font-medium text-grey-800">
+        <label id={id} className="text-sm font-medium text-grey-800">
           {label}
         </label>
         <ComboboxInput
           aria-labelledby={id}
           placeholder={placeholder}
           className={cn(
-            "h-12 rounded-control border-[var(--divider)] text-[15px]",
-            "focus-within:border-grey-800 focus-within:ring-1 focus-within:ring-inset focus-within:ring-grey-800",
-            "[&_[data-slot=input-group-control]]:pl-3.5 [&_[data-slot=input-group-control]]:text-[15px]",
+            "h-12 rounded-control border-[var(--divider)] text-sm",
+            "focus-within:border-primary focus-within:ring-1 focus-within:ring-inset focus-within:ring-primary",
+            "[&_[data-slot=input-group-control]]:pl-3.5 [&_[data-slot=input-group-control]]:text-sm",
           )}
         />
       </div>

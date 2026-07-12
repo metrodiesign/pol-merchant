@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
 
@@ -27,14 +28,30 @@ function SidebarLogo({
       href="/"
       className={cn("inline-flex items-center", collapsed ? "px-0" : "px-1")}
     >
-      <Logo size={40} idPrefix={logoIdPrefix} />
+      {collapsed ? (
+        <Logo size={40} idPrefix={logoIdPrefix} />
+      ) : (
+        <Image
+          src="/viriyah-logo.png"
+          alt="วิริยะประกันภัย"
+          width={667}
+          height={250}
+          priority
+          className="h-16 w-auto"
+        />
+      )}
     </Link>
   );
 }
 
 function isActivePath(pathname: string, item: NavItem): boolean {
-  if (item.path === pathname) return true;
-  if (item.deepMatch && pathname.startsWith(item.path + "/")) return true;
+  const base = item.match ?? item.path;
+  if (item.path === pathname || base === pathname) return true;
+  // A sibling owns these sub-paths — don't let this item's deep range claim them.
+  if (item.exclude?.some((p) => pathname === p || pathname.startsWith(p + "/")))
+    return false;
+  if ((item.deepMatch || item.match) && pathname.startsWith(base + "/"))
+    return true;
   return (
     item.children?.some(
       (c) =>
@@ -54,7 +71,7 @@ function ChildLink({ child, treeline = true }: { child: NavItem; treeline?: bool
     "flex h-9 items-center rounded-control pr-3 text-sm outline-none transition-colors",
     treeline ? "ml-7 pl-2" : "gap-3 pl-3",
     active
-      ? "bg-[var(--primary-soft)] font-semibold text-primary"
+      ? "bg-crop-blue font-semibold text-crop-gold"
       : "text-grey-600 hover:bg-[var(--primary-soft)] hover:text-primary focus-visible:bg-[var(--primary-soft)] focus-visible:text-primary",
   );
 
@@ -64,7 +81,7 @@ function ChildLink({ child, treeline = true }: { child: NavItem; treeline?: bool
         <span
           className={cn(
             "size-1.5 shrink-0 rounded-full",
-            active ? "bg-primary" : "bg-grey-400",
+            active ? "bg-crop-gold" : "bg-grey-400",
           )}
         />
         {child.title}
@@ -79,7 +96,7 @@ function ChildLink({ child, treeline = true }: { child: NavItem; treeline?: bool
         aria-hidden
         className={cn(
           "pointer-events-none absolute left-[14px] top-1/2 size-2 -translate-y-1/2 rounded-full transition-colors",
-          active ? "bg-primary" : "bg-grey-400",
+          active ? "bg-crop-gold" : "bg-grey-400",
         )}
       />
       <Link href={child.path} className={linkClass}>
@@ -93,8 +110,8 @@ function ChildLink({ child, treeline = true }: { child: NavItem; treeline?: bool
 
 function ExpandedRow({ item }: { item: NavItem }) {
   const pathname = usePathname();
-  const active = item.path === pathname;
   const hasChildren = !!item.children?.length;
+  const active = isActivePath(pathname, item);
   const childActive = isActivePath(pathname, item);
   const [open, setOpen] = useState(() => isActivePath(pathname, item));
 
@@ -109,7 +126,7 @@ function ExpandedRow({ item }: { item: NavItem }) {
             // Live: primary tint only while a child route is active; a manually
             // expanded parent gets the neutral grey tint instead.
             childActive
-              ? "bg-[var(--primary-soft)] text-primary"
+              ? "bg-crop-blue text-crop-gold"
               : open
                 ? "bg-[rgba(145,158,171,0.08)] text-grey-800"
                 : "text-grey-600 hover:bg-[var(--primary-soft)] hover:text-primary focus-visible:bg-[var(--primary-soft)] focus-visible:text-primary",
@@ -144,7 +161,7 @@ function ExpandedRow({ item }: { item: NavItem }) {
         className={cn(
           "flex min-h-11 items-center gap-3 rounded-control py-1 pl-3 pr-2 text-sm outline-none transition-colors",
           active
-            ? "bg-[var(--primary-soft)] font-semibold text-primary"
+            ? "bg-crop-blue font-semibold text-crop-gold"
             : "font-medium text-grey-600 hover:bg-[var(--primary-soft)] hover:text-primary focus-visible:bg-[var(--primary-soft)] focus-visible:text-primary",
         )}
       >
@@ -158,7 +175,7 @@ function ExpandedRow({ item }: { item: NavItem }) {
           )}
         </span>
         {item.badge && (
-          <span className="rounded-md bg-error/10 px-1.5 py-0.5 text-[11px] font-bold text-error">
+          <span className="rounded-md bg-error/10 px-1.5 py-0.5 text-xs font-bold text-error">
             {item.badge}
           </span>
         )}
@@ -173,9 +190,9 @@ function MiniItemInner({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <span
       className={cn(
-        "relative flex h-[58px] w-full flex-col items-center justify-center gap-1 rounded-control px-1 pb-1.5 pt-2 text-[10px] font-bold leading-none transition-colors",
+        "relative flex h-[58px] w-full flex-col items-center justify-center gap-1 rounded-control px-1 pb-1.5 pt-2 text-xs font-bold leading-none transition-colors",
         active
-          ? "bg-[var(--primary-soft)] text-primary"
+          ? "bg-crop-blue text-crop-gold"
           : "text-grey-600 hover:bg-[var(--primary-soft)] hover:text-primary",
       )}
     >
@@ -264,7 +281,7 @@ export function SidebarNav({
           {collapsed ? (
             <span className="mx-auto mb-2 block h-px w-6 bg-[var(--divider)]" />
           ) : (
-            <p className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-grey-600">
+            <p className="px-3 pb-2 text-xs font-bold uppercase tracking-wider text-grey-600">
               {group.subheader}
             </p>
           )}
@@ -286,8 +303,8 @@ export function SidebarNav({
     <div className="flex h-full w-full flex-col bg-bg-paper">
       <div
         className={cn(
-          "pb-4 pt-4",
-          collapsed ? "flex justify-center px-2" : "px-5",
+          "flex h-[72px] items-center",
+          collapsed ? "justify-center px-2" : "px-5",
         )}
       >
         <SidebarLogo collapsed={collapsed} logoIdPrefix={logoIdPrefix} />

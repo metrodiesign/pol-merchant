@@ -91,18 +91,88 @@
   --shadow-error: 0 8px 16px 0 rgba(255, 86, 48, 0.24);
 
   /* ---- Typography ---- */
-  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Thai font appended after the Latin face so Latin glyphs use Public Sans and
+     Thai glyphs use Noto Sans Thai (Latin face has no Thai coverage). */
+  --font-sans: var(--font-public-sans), var(--font-noto-thai), ui-sans-serif,
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
 
   /* ---- Typography (Public Sans body, Barlow display — extracted from minimals) ---- */
-  --font-display: "Barlow", var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow", var(--font-public-sans), var(--font-noto-thai),
+    ui-sans-serif, system-ui, sans-serif;
+  /* ---- Control-plane signature: monospace data face for machine identifiers
+     (masked keys, idempotency keys, event/client IDs, signatures, refs). ---- */
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, SFMono-Regular,
+    "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  /* ---- Body/display scale: floor 14px, body 16px (rebalanced up) ---- */
+  --text-xs: 0.875rem;            /* 14px ← floor */
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem;           /* 15px ← body (text-sm) */
+  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;              /* 16px ← normal */
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.25rem;             /* 20px */
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.5rem;              /* 24px */
+  --text-xl--line-height: 2rem;
+  --text-2xl: 1.75rem;            /* 28px */
+  --text-2xl--line-height: 2.25rem;
+  --text-3xl: 2rem;               /* 32px */
+  --text-3xl--line-height: 2.5rem;
+  --text-4xl: 2.5rem;             /* 40px */
+  --text-4xl--line-height: 2.75rem;
+  --text-5xl: 3rem;               /* 48px */
+  --text-5xl--line-height: 3rem;
   /* clamp ranges = base rem (mobile) -> computed px @1440 (desktop), matching MUI responsiveFontSizes */
   --text-h1: clamp(2.5rem, 1.972rem + 2.253vw, 4rem);
   --text-h2: clamp(2rem, 1.648rem + 1.502vw, 3rem);
-  --text-h3: clamp(1.5rem, 1.324rem + 0.751vw, 2rem);
-  --text-h4: clamp(1.25rem, 1.162rem + 0.376vw, 1.5rem);
-  --text-h5: clamp(1.125rem, 1.103rem + 0.094vw, 1.1875rem);
-  --text-h6: clamp(1.0625rem, 1.040rem + 0.094vw, 1.125rem);
+  --text-h3: clamp(1.75rem, 1.662rem + 0.376vw, 2rem);     /* 28→32px */
+  --text-h4: clamp(1.5rem, 1.412rem + 0.376vw, 1.75rem);   /* 24→28px */
+  --text-h5: clamp(1.375rem, 1.331rem + 0.188vw, 1.5rem);  /* 22→24px */
+  --text-h6: clamp(1.25rem, 1.206rem + 0.188vw, 1.375rem); /* 20→22px */
+}
+
+@theme {
+  /* ===== Viriyah corporate palette (CI Manual 2.11–2.16) — additive, ไม่กระทบ token เดิม ===== */
+
+  /* สีหลัก (2.11) */
+  --color-crop-blue: #0033a2;          /* น้ำเงินวิริยะ — PANTONE 286 C */
+  --color-crop-gold: #fcaf17;          /* เหลืองทอง — PANTONE 7409 C */
+  --color-crop-black: #000000;
+  --color-crop-white: #ffffff;
+
+  /* น้ำเงินวิริยะ — shade 100/80/60/40/20 (2.15) */
+  --color-crop-blue-100: #0033a2;
+  --color-crop-blue-80: #5165aa;
+  --color-crop-blue-60: #7b8ec5;
+  --color-crop-blue-40: #a8b4dc;
+  --color-crop-blue-20: #d5dcf1;
+
+  /* ดำ — shade 80/60/40/20 (2.15) */
+  --color-crop-black-80: #565759;
+  --color-crop-black-60: #898b8b;
+  --color-crop-black-40: #b1b2b1;
+  --color-crop-black-20: #c8c7c6;
+
+  /* สีรอง (2.12) */
+  --color-crop-grey-light: #d9d7d5;    /* เทาอ่อน — Cool Gray 1 */
+  --color-crop-grey: #a7a7a8;          /* เทาเงิน — Cool Gray 6 */
+  --color-crop-navy: #2b375f;          /* น้ำเงินเข้ม — PANTONE 288 */
+  --color-crop-silver: #898b8c;        /* เงินพิเศษ — PANTONE 877 */
+  --color-crop-gold-special: #7f7452;  /* ทองพิเศษ — PANTONE 871 */
+
+  /* น้ำเงินเข้ม — shade 100/80/60/40/20 (2.16) */
+  --color-crop-navy-100: #2b375f;
+  --color-crop-navy-80: #474f8a;
+  --color-crop-navy-60: #6e72a5;
+  --color-crop-navy-40: #9ba0c6;
+  --color-crop-navy-20: #ced1e0;
+
+  /* เทาเงิน (Cool Gray 6) — shade 80/60/40/20 (2.16) */
+  --color-crop-grey-80: #bbbab9;
+  --color-crop-grey-60: #c8c7c6;
+  --color-crop-grey-40: #d0cfcc;
+  --color-crop-grey-20: #d9d7d5;
 }
 
 /* ---- shadcn primitive tokens mapped to the Minimal palette ---- */
@@ -137,18 +207,46 @@
 }
 
 /* ---- Minimals clone primary = green; scoped to the /dashboard subtree so
-   CentroPay (app) keeps its blue primary. Applied via .theme-minimals on the
-   dashboard layout root. Tailwind v4 utilities read var(--color-primary) at
-   use-site, so overriding it on an ancestor recolors bg-/text-/ring-primary. ---- */
+   the default (non-minimals) theme keeps its blue primary. Applied via
+   .theme-minimals on the dashboard layout root. Tailwind v4 utilities read
+   var(--color-primary) at use-site, so overriding it on an ancestor recolors
+   bg-/text-/ring-primary. ---- */
 .theme-minimals {
-  --color-primary-lighter: #c8fad6;
-  --color-primary-light: #5be49b;
-  --color-primary: #00a76f;
-  --color-primary-dark: #007867;
-  --color-primary-darker: #004b50;
-  --primary: #00a76f;
-  --ring: #00a76f;
-  --primary-soft: color-mix(in srgb, #00a76f 8%, transparent);
+  /* primary — น้ำเงินวิริยะ (CI 2.11); lighter/light = crop blue tint, dark/darker derived */
+  --color-primary-lighter: var(--color-crop-blue-20);
+  --color-primary-light: var(--color-crop-blue-60);
+  --color-primary: var(--color-crop-blue);
+  --color-primary-dark: var(--color-crop-navy);
+  --color-primary-darker: #1d2647;
+  --primary: var(--color-crop-blue);
+  --ring: var(--color-crop-blue);
+  --primary-soft: color-mix(in srgb, var(--color-crop-blue) 12%, transparent);
+  --shadow-primary: 0 8px 16px 0 rgba(0, 51, 162, 0.24);
+
+  /* === main content canvas = เทาอ่อน (CI 2.12 #D9D7D5); shell = น้ำเงิน === */
+  --color-bg: #fcfdfd;       /* main content (เทาอ่อนมาก เกือบขาว) */
+  --background: #fcfdfd;
+  --color-bg-neutral: #eceeef;
+
+  /* gold accent (5%) */
+  --color-secondary: var(--color-crop-gold);
+}
+
+/* Topbar น้ำเงิน — icon/text เป็นขาว */
+.theme-minimals [data-topbar] {
+  --color-grey-800: #ffffff;
+  --color-grey-700: #ffffff;
+  --color-grey-600: rgba(255, 255, 255, 0.86);
+  --color-grey-500: rgba(255, 255, 255, 0.56);
+}
+
+/* Horizontal nav (เมื่อ navLayout=horizontal) — text ขาว, active = ทอง */
+.theme-minimals [data-hnav] {
+  --color-primary: var(--color-crop-gold);
+  --color-grey-800: #ffffff;
+  --color-grey-700: #ffffff;
+  --color-grey-600: rgba(255, 255, 255, 0.72);
+  --color-grey-200: rgba(255, 255, 255, 0.12);
 }
 
 /* ---- Color presets — runtime switch via data-preset on the .theme-minimals root.
@@ -255,8 +353,10 @@
     background: var(--color-bg);
     color: var(--color-text-primary);
     /* --font-active set on <html> by the settings provider (Font → Family);
-       falls back to the Public Sans stack when unset. */
-    font-family: var(--font-active, var(--font-sans));
+       falls back to the Public Sans stack when unset. Thai face appended so the
+       selected Latin font never strands Thai glyphs on the OS fallback. */
+    font-family: var(--font-active, var(--font-public-sans)),
+      var(--font-noto-thai), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
   /* Restore pointer cursor on interactive elements — Tailwind v4 preflight
@@ -343,7 +443,7 @@ button, a, input, select, textarea {
 }
 
 /* Minimals clone: override transition duration to match MUI's 250ms easing.
-   Scoped to .theme-minimals so CentroPay (app) stays at 150ms. */
+   Scoped to .theme-minimals so the default theme stays at 150ms. */
 .theme-minimals button,
 .theme-minimals a,
 .theme-minimals [role="button"] {
@@ -367,7 +467,7 @@ button, a, input, select, textarea {
   border: 1px solid var(--divider);
   background-color: transparent;
   color: var(--color-text-primary);
-  font-size: 0.9375rem; /* 15px */
+  font-size: 1rem; /* 16px — body */
   outline: none;
   transition: border-color 150ms ease-in-out, box-shadow 150ms ease-in-out;
 }
@@ -461,8 +561,15 @@ tbody tr {
 @utility text-subtitle2 { font-size: 0.875rem; line-height: 1.571; font-weight: 600; }
 @utility text-body1 { font-size: 1rem; line-height: 1.5; font-weight: 400; }
 @utility text-body2 { font-size: 0.875rem; line-height: 1.571; font-weight: 400; }
-@utility text-caption { font-size: 0.75rem; line-height: 1.5; font-weight: 400; }
-@utility text-overline { font-size: 0.75rem; line-height: 1.5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+@utility text-caption { font-size: 0.875rem; line-height: 1.5; font-weight: 400; }
+@utility text-overline { font-size: 0.875rem; line-height: 1.5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ---- Control-plane data face: machine identifiers, tabular figures aligned ---- */
+@utility text-data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+/* ---- Control-plane health spine: vertical state bar on list rows / cards.
+   Decorative only — the same state is always shown in a text badge too. ---- */
+@utility status-spine { display: inline-block; width: 3px; border-radius: 9999px; align-self: stretch; }
 
 /* ---- Settings: compact density ---- */
 [data-compact="true"] [data-dashboard-main] {
