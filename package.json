@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 5300",
+    "dev:clean": "rm -rf .next tsconfig.tsbuildinfo && next dev -p 5300",
     "build": "next build",
     "start": "next start -p 5300",
     "lint": "eslint",
