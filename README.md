@@ -151,6 +151,28 @@ grep -r "orange" .next/static/chunks/*.css | head -5
 
 > `next build` เขียว ≠ utility class ถูก generate เสมอ (unknown utility เงียบไม่ error)
 
+### Docker (deploy จริง)
+
+```bash
+# build + tag ({package.json version}-{git short SHA})
+docker build -t pol-admin:$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD) .
+
+# run แบบ standalone (image เดี่ยว หลัง reverse proxy ที่ทำ same-origin routing ให้แล้ว)
+docker run -d -p 5300:5300 pol-admin:$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD)
+
+# หรือผ่าน compose (scope แค่ service pol-admin เดี่ยว ไม่มี pol-core/reverse-proxy)
+docker compose up -d --build
+```
+
+> `ADMIN_API_ORIGIN` ต้องเว้นว่างเสมอตอน build/run จริง — reverse proxy (nginx) ทำ same-origin
+> routing แทน Next.js rewrite ให้แล้ว (ดู [Environment Variables](#environment-variables)). ค่านี้ถูก
+> evaluate **ตอน build เท่านั้น** แล้วฝังตายตัวถาวรในผลลัพธ์ (`output: "standalone"` ไม่ re-read env
+> ตอน container start) — ถ้าตั้งไว้ตอน `NODE_ENV=production` build จะเห็น warning เตือนใน log ทันที.
+
+Container ประกาศ Docker `HEALTHCHECK` เอง — poll `GET /api/health` (`200 "ok"`, liveness ล้วน
+ไม่เช็ค backend) ทุก 30 วินาทีผ่าน Node โดยตรง (ไม่ใช่ `curl`/`wget` — `node:20-alpine` ไม่มีสองตัวนี้
+ติดมา) ดู `docker inspect --format='{{json .State.Health}}' <container>` เพื่อดูสถานะจริง.
+
 ---
 
 ## รันเทสต์

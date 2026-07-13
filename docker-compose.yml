@@ -1,0 +1,11 @@
+services:
+  pol-admin:
+    build: .
+    ports:
+      - "5300:5300"
+    # ADMIN_API_ORIGIN ต้องเว้นว่างเสมอใน prod (reverse proxy ทำ same-origin routing แทน
+    # Next.js rewrite — ดู .env.example). ไฟล์นี้ optional: ไม่มีก็รันได้ปกติ.
+    env_file:
+      - path: .env.production
+        required: false
+    restart: unless-stopped
