@@ -6,7 +6,7 @@ Framework core เป็น stack-neutral. The neutral canon — `../CODING_STAN
 `../ARCHITECTURE.md`, `../TESTING_PROTOCOL.md` — holds for every project regardless of
 language, test runner, or UI framework. โครงหลักไม่ผูกกับ stack ใดเป็นพิเศษ.
 
-เดิมมี `nextjs.md` profile อยู่ที่นี่; ถูกถอดออกตอนที่ framework กลายเป็น stack-agnostic. ตอนนี้มี project `nextjs.md` profile กลับมาอีกครั้งสำหรับ Payment Orchestration Layer (POL) merchant console — ดู `nextjs.md`.
+เดิมมี `nextjs.md` profile อยู่ที่นี่; ถูกถอดออกตอนที่ framework กลายเป็น stack-agnostic.
 
 ## วิธีใช้
 

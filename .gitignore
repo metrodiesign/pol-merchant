@@ -6,33 +6,16 @@ CLAUDE.local.md
 node_modules/
 dist/
 build/
-out/
 __pycache__/
 *.pyc
 .next/
 next-env.d.ts
 coverage/
 tsconfig.tsbuildinfo
-*.tsbuildinfo
-.turbo/
 .playwright-mcp/
 .env
 .env.*
 !.env.example
 
-# Deploy
-.vercel/
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# Certs
-*.pem
-
-# OS
+# OS junk
 .DS_Store
-Thumbs.db

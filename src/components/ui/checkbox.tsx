@@ -28,14 +28,14 @@ export function Checkbox({
       aria-invalid={error || undefined}
       onClick={() => onChange?.(!checked)}
       className={cn(
-        "inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-primary/8",
+        "inline-flex size-9 items-center justify-center rounded-full",
         className
       )}
       {...props}
     >
       <span
         className={cn(
-          "flex size-5 items-center justify-center rounded-[4px] border-2 transition-colors",
+          "flex size-6 items-center justify-center rounded-[4px] border-2 transition-colors",
           checked || indeterminate
             ? "border-primary bg-primary text-white"
             : error

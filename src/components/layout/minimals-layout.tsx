@@ -11,19 +11,29 @@ import { Logo } from "./logo";
 import { minimalsNavConfig } from "./minimals-nav-config";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 /**
  * Shell for the /dashboard (minimals clone) route group.
  *
- * Identical structure to DashboardLayout but:
- *  - Uses MinimalsTopbar (transparent, grey icons) instead of Topbar.
- *  - Passes minimalsNavConfig to SidebarNav via the new optional `groups` prop.
+ *  - Uses MinimalsTopbar (transparent, grey icons).
+ *  - Passes minimalsNavConfig to SidebarNav via the optional `groups` prop.
  *  - Keeps the `theme-minimals` class on the root so the green primary stays.
  *  - Uses a separate localStorage key so collapse state is independent.
- *
- * DashboardLayout (and CentroPay's (app)/layout.tsx) are untouched.
  */
 export function MinimalsLayout({ children }: { children: React.ReactNode }) {
+  // BFF auth gate — ทุก protected route group route ผ่าน MinimalsLayout; /login + /logout ไม่ผ่าน -> public.
+  return (
+    <AuthProvider>
+      <AuthGuard>
+        <MinimalsShell>{children}</MinimalsShell>
+      </AuthGuard>
+    </AuthProvider>
+  );
+}
+
+function MinimalsShell({ children }: { children: React.ReactNode }) {
   const { settings, setSetting } = useSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [splash, setSplash] = useState(true);
@@ -124,7 +134,7 @@ export function MinimalsLayout({ children }: { children: React.ReactNode }) {
           <main
             data-dashboard-main
             className={cn(
-              "mx-auto flex w-full flex-col px-4 pb-16 pt-4 sm:px-6 mlg:px-10",
+              "mx-auto flex w-full flex-col px-4 pb-6 pt-4 sm:px-6 mlg:px-10",
               fullBleed ? "max-w-none" : "max-w-[1600px]",
             )}
           >

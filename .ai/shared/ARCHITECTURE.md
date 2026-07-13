@@ -47,95 +47,62 @@ retrospectives/       # บันทึก retro รายเดือน
 - จัด import เป็นชั้น: external ก่อน → internal absolute → relative
 - naming convention ชัดและคงเส้นคงวาทั้ง project (ดู Naming Conventions ด้านล่าง)
 
-### This project: Payment Orchestration Layer (POL) merchant console (`src/` layout)
+### โครงสร้าง `src/` จริงของ POL admin (pol-admin)
 
-repo นี้คือ MERCHANT-facing console (frontend) ของ **Payment Orchestration Layer (POL)**
-สำหรับตัวแทนประกันภัย / นายหน้าประกันภัย (ตลอดจนสาขาและ sub-user ที่คุมด้วย RBAC)
-ใช้รวบรับชำระเบี้ยประกันข้าม PSP/channel หลายทางผ่าน orchestration layer เดียว แล้วจัดการ
-payment lifecycle, reconciliation และ integration ทั้งหมด (ไม่ใช่ orchestration backend,
-ไม่ใช่ end-customer checkout, ไม่ใช่ PSP/admin backoffice). transaction originator เป็นหนึ่งใน
-`branch | agent | broker | staff | app`. content เป็นภาษาไทย; PSP = 2C2P, Omise; channel = card,
-qr, installment, wallet, bank; policy type = ประกันรถยนต์ / ประกันชีวิต / ประกันสุขภาพ / ประกันอัคคีภัย /
-ประกันการเดินทาง / ประกันอุบัติเหตุ.
-
-stack: Next.js 16 (App Router, React Server Components เป็น default) + React 19 +
-TypeScript 5 (strict + noUncheckedIndexedAccess); path alias `@/*` -> `src/*`; Tailwind v4
-(CSS-first) + shadcn/ui บน `@base-ui/react` (Base UI primitives — ไม่ใช่ Radix);
-`@tanstack/react-table` สำหรับ data table; recharts สำหรับ chart; `cn` ที่ `@/lib/utils`.
-dev/start รันบน PORT 5300.
+แอปนี้คือ Next.js 16 App Router (frontend ล้วน, client-side, mock data). stack/idiom: [stack/nextjs.md](stack/nextjs.md).
 
 ```
 src/
-  app/                    # App Router (RSC). route ปัจจุบัน = scaffold ที่สืบทอดจาก
-                          #   Minimal UI (Minimals v700) admin template (app/dashboard/*);
-                          #   ยังไม่มี route ของ POL จริง — payment route ยัง PENDING (ดูหมายเหตุล่าง)
+  app/                 # App Router: layout.tsx (root: SettingsProvider, fonts, globals.css), dashboard routes
+    globals.css        #   design token single-source (@theme) + theme variants + dark mode
   components/
-    payment/<feature>/    # ชั้น product domain จริงของ POL (ตรงนี้คือเนื้อจริง)
-    ui/                   # shadcn/ui primitives (button, input, dialog/sheet, ... บน @base-ui/react)
-    dashboard/            # widget ที่สืบทอดจาก Minimals template (จะถูก prune/แทนเมื่อ wire route จริง)
-  types/                  # domain type (PascalCase type, kebab-case ไฟล์)
+    ui/                # primitive: shadcn style base-nova บน @base-ui/react (ไม่ใช่ radix) — prop-only
+    payment/           # (*) POL domain (product surface): dashboard, transactions, invoices, psp, api-clients,
+                       #   webhooks, audit, users, roles, branches, agents, apps, reports, notifications,
+                       #   shell, toast (+ shared: status-badge, stat-card, entity-drawer, lifecycle-track)
+    dashboard/         # Minimals template demo modules (analytics/ecommerce/banking/.../policy) — scaffolding
+    layout/            # app shell: *-layout, sidebar/topbar, nav-config.ts, drawers, logo, settings-drawer
+    form/              # field wrapper: text/select/date/country/phone-country + form-control
+    charts/            # recharts wrapper: donut/radial/stacked-bar/sparkline + legend/tooltip
+    table/             # @tanstack/react-table UI: data-table, pagination, selected-action, no-data
+    shared/            # cross-app: custom-breadcrumbs, page-header, avatar-upload, fieldset
+    providers/         # settings-provider.tsx (theme/mode/preset/layout/font runtime control)
+  hooks/               # stateful logic: use-data-table, use-policy-table-with-cart, use-invoices-table,
+                       #   use-scroll-lock, use-is-mobile
   lib/
-    mock/                 # typed seeded mock data (seeded RNG, แยกออกจาก presentation)
-    utils.ts              # cn() = twMerge(clsx(...))
-  hooks/                  # use-*.ts รวม table hook ของ @tanstack/react-table
-public/                   # static asset (favicon, ...)
+    mock/              # typed mock data (NO backend): originators/psp/transactions/webhooks/invoices/audit/...
+    utils.ts           # cn() (clsx+tailwind-merge), formatTHB()
+    breadcrumbs.ts     # buildBreadcrumbs() — map nav-config -> trail
+  types/               # domain contracts (PascalCase): transaction, psp, originator, role, permission,
+                       #   webhook, api-client, audit, policy, invoice, ...
 ```
 
-ชั้น product domain จริงอยู่ใต้ `src/components/payment/<feature>/` (จัดแบบ feature-folder)
-feature area ได้แก่:
-
-- `dashboard/` — KPI grid, volume bar chart, PSP donut, channel breakdown, top originators,
-  recent transactions, txn drawer
-- `transactions/` — lifecycle, action, bulk bar, columns, filter, kpi strip,
-  `use-transactions-table`
-- `invoices/` — hosted payment preview/link, form, columns, tabs, stat cards
-- `psp/` — provider card, config modal, routing rule + routing-rule modal, history drawer
-- `webhooks/` — endpoints, api keys card, event log, integration guide, payload drawer, tabs
-- `api-clients/` — list/row, create modal, secret reveal modal, kpi cards
-- `notifications/` — columns, filter, kpi strip, payload drawer, resend dialog
-- `branches/`, `agents/`, `users/`
-- `roles/` — RBAC: badge, editor drawer, columns
-- `audit/` — timeline, filter, detail drawer, stats
-- `reports/` — reconciliation table, breakdown ตาม channel/psp/originator, date range
-- `apps/` — integration card/grid
-
-shared payment atom อยู่ที่ราก `components/payment/`: `stat-card`, `status-badge`,
-`channel-tag`, `confirm-modal`, `entity-drawer`, `lifecycle-track`, `mini-lifecycle`,
-`table-empty`, `table-footer`, `toast/` (toast provider) และ `shell/` (global hotkeys / app shell).
-
-domain type อยู่ใต้ `src/types/` (เช่น `api-client`, `audit`, `invoice`, `originator`,
-`permission`, `policy`, `psp`, `role`, `transaction`, `user`, `webhook`) และ typed mock data
-คู่กันอยู่ที่ `src/lib/mock/<domain>.ts`. table hook ที่ใช้ `@tanstack/react-table` อยู่ที่
-`src/hooks/use-data-table.ts` และ per-feature `use-*-table.ts` (co-located ตาม feature ก็มี).
-
-project นี้ทำให้ principle ข้างบนเป็นจริงดังนี้: logic/mock data ถูกแยกออกจาก presentation
-(mock อยู่ใน `src/lib/mock/` แบบ typed + seeded, view เพียงเรียกใช้ ไม่ inline ก้อนข้อมูล);
-จัด component แบบ feature-folder (`components/payment/<feature>/`) โดย shadcn primitive
-แยกไว้ที่ `components/ui/`; เรียก internal module ผ่าน alias `@/*`; "use client" ใส่เฉพาะจุดที่
-ต้องมี interactivity (RSC เป็น default).
-
-หมายเหตุสำคัญ (route status): ชั้น `payment/*` (component + type + mock + hook) มีอยู่ครบในระดับ
-domain แต่ payment route ยัง "ไม่ถูก wire" เข้า App Router — ไม่มี route ใต้ `src/app` ที่
-import `components/payment` เลย. route ใต้ `src/app/dashboard/*` และไฟล์ `components/dashboard/*`
-+ `lib/mock/*` หลายตัว (analytics, banking, booking, calendar, ecommerce, kanban, mail, ...) คือ
-scaffold ที่สืบทอดจาก Minimals template รอ prune/แทนเมื่อ wire route POL จริง. อย่าอ้างว่า
-payment route มีอยู่แล้ว.
+> (*) = product surface จริง. `components/dashboard/*` + route ใน `app/dashboard/*` ส่วนใหญ่ยังเป็น
+> demo ของ Minimals template (de-navved); payment domain ยังไม่ wire เข้า route — ดู PROJECT_CONTEXT
+> "Current State". layout data flow: `lib/mock/*` -> hook -> page container spread เป็น props -> child render.
 
 `.github-sync.json` ใน `.claude/specs/<feature>/` = sidecar manifest ของ `/spec-sync-github`
 (link map issue<->task) — commit เข้า repo, เฉพาะคำสั่ง sync เขียน; ห้ามแก้มือ,
 ห้ามใส่ link ลง tasks.md
 
-## Naming Conventions
+## Naming Conventions (โปรเจกต์จริง)
 
-- type/interface: PascalCase
-- ไฟล์ logic/data: ตาม convention ของภาษา/stack ที่ project เลือก แต่คงเส้นคงวาทั้ง repo
-- ค่าคงที่ที่ export: ตั้งชื่อสื่อความหมาย + มี type ชัด
+- ไฟล์ `.ts`/`.tsx`: **kebab-case** (`use-data-table.ts`, `policy-columns.tsx`, `custom-breadcrumbs.tsx`)
+- type/interface: **PascalCase** (`Policy`, `PolicyStatus`, `SettingsContextValue`)
+- custom hook: prefix **`use-*`** (`use-policy-table-with-cart`)
+- context provider: suffix **`*-provider.tsx`** + hook เข้าถึงชื่อ `useXxx()` (`settings-provider.tsx` -> `useSettings()`)
+- mock data: `entity.ts` (`policies.ts` export `POLICIES: Policy[]`)
+- export เป็น **named function** เสมอ (`export function PolicyDataTable()`); default export เฉพาะ Next page/layout
 
 ## Import Ordering
 
-1. external (dependency ของภายนอก)
-2. internal absolute (โมดูลภายใน project)
-3. relative (`./...`)
+1. external (dependency ของภายนอก เช่น `react`, `@tanstack/react-table`)
+2. internal absolute ผ่าน alias **`@/*`** (`@/types/policy`, `@/components/ui/*`) — ใช้ absolute เสมอ
+3. relative (`./...`) เฉพาะภายในโมดูลเดียวกัน
+
+> `"use client"` (ถ้ามี) อยู่บรรทัดบนสุดก่อน import ทั้งหมด.
+> นี่คือ convention เป้าหมาย — บางไฟล์เดิม (เช่น payment columns: `transactions-columns.tsx`,
+> `invoice-columns.tsx`, `roles-columns.tsx`) ยังเรียงสลับ external/internal อยู่; จัดใหม่ให้ตรงเมื่อแก้ไฟล์นั้น
 
 ## Architectural Patterns
 

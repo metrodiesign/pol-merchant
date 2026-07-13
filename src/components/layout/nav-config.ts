@@ -9,6 +9,20 @@ export interface NavItem {
   disabled?: boolean;
   /** When true, the item is considered active on its path AND any sub-paths. */
   deepMatch?: boolean;
+  /**
+   * Base path used for active detection instead of `path`. The item is active on
+   * `match` and any of its sub-paths — use when the link target is a child route
+   * (e.g. path `/user/list`) but the menu should stay active across the whole
+   * section (`match: "/user"` → active on /user/list, /user/new, /user/edit).
+   */
+  match?: string;
+  /**
+   * Sub-paths to carve OUT of this item's deep/match range so a sibling that
+   * owns them stays the sole active item. Without it a broad `match` (e.g.
+   * "/user") would also light up on a sibling's route (`/user/role`). The item
+   * stays active on its own pages — only the listed prefixes are excluded.
+   */
+  exclude?: string[];
 }
 
 export interface NavGroup {
@@ -17,50 +31,117 @@ export interface NavGroup {
 }
 
 export const navConfig: NavGroup[] = [
-  // ── CentroPay groups ──────────────────────────────────────────────────────
+  // ── Main ─────────────────────────────────────────────────────────────────
   {
-    subheader: "ภาพรวม",
-    items: [
-      { title: "แดชบอร์ด", path: "/", icon: "dashboard" },
-      { title: "ธุรกรรม", path: "/transactions", icon: "banking" },
-    ],
+    subheader: "Main",
+    items: [{ title: "แดชบอร์ด", path: "/main", icon: "dashboard" }],
   },
+
+  // ── กรมธรรม์ ───────────────────────────────────────────────────────────────
   {
-    subheader: "การรับชำระเงิน",
+    subheader: "ระบบงานขาย",
     items: [
-      { title: "กรมธรรม์", path: "/policy/list", icon: "invoice" },
-      { title: "ใบแจ้งหนี้ & ลิงก์", path: "/invoices", icon: "invoice" },
-      { title: "ออกใบแจ้งหนี้", path: "/invoices/new", icon: "ecommerce" },
-    ],
-  },
-  {
-    subheader: "ผู้ใช้งาน & สิทธิ์",
-    items: [
-      { title: "ผู้ใช้งาน", path: "/users", icon: "user" },
-      { title: "Roles", path: "/roles", icon: "lock" },
-      { title: "สาขา", path: "/branches", icon: "analytics" },
-      { title: "ตัวแทน / นายหน้า", path: "/agents", icon: "user" },
-    ],
-  },
-  {
-    subheader: "ระบบ",
-    items: [
-      { title: "แอปเชื่อมต่อ", path: "/apps", icon: "file" },
-      { title: "API Clients", path: "/api-clients", icon: "lock" },
-      { title: "PSP & เส้นทางชำระ", path: "/psp", icon: "banking" },
-      { title: "Webhooks", path: "/webhooks", icon: "job" },
-      { title: "การแจ้งเตือน", path: "/notifications", icon: "mail" },
-      { title: "Audit Log", path: "/audit", icon: "booking" },
-    ],
-  },
-  {
-    subheader: "รายงาน",
-    items: [
-      { title: "รายงาน & กระทบยอด", path: "/reports", icon: "analytics" },
+      {
+        title: "กรมธรรม์",
+        path: "/policy/list",
+        icon: "invoice",
+        match: "/policy",
+      },
+      {
+        title: "คำสั่งซื้อ",
+        path: "/order/list",
+        icon: "order",
+        match: "/order",
+      },
+      {
+        title: "รายการชำระเงิน",
+        path: "/transaction/list",
+        icon: "invoice",
+        match: "/transaction",
+      },
     ],
   },
 
-  // ── Demo (minimals pages, de-navved from primary groups) ─────────────────
+  // ── ผู้ใช้งาน & สิทธิ์ ─────────────────────────────────────────────────────
+  {
+    subheader: "ผู้ใช้งาน & สิทธิ์",
+    items: [
+      {
+        title: "ผู้ใช้งาน",
+        path: "/user/list",
+        icon: "user",
+        match: "/user",
+        exclude: ["/user/role"],
+      },
+      {
+        title: "บทบาทและสิทธิ์",
+        path: "/user/role/list",
+        icon: "lock",
+        match: "/user/role",
+      },
+    ],
+  },
+
+  // ── ตัวแทน/นายหน้า ──────────────────────────────────────────────────────────
+  {
+    subheader: "ตัวแทน/นายหน้า",
+    items: [
+      {
+        title: "ตัวแทน/นายหน้า",
+        path: "/producer/list",
+        icon: "user",
+        match: "/producer",
+        exclude: ["/producer/role"],
+      },
+      {
+        title: "บทบาทและสิทธิ์",
+        path: "/producer/role/list",
+        icon: "lock",
+        match: "/producer/role",
+      },
+    ],
+  },
+
+  // ── Control plane · การเชื่อมต่อ & orchestration ───────────────────────────
+  {
+    subheader: "Control plane · การเชื่อมต่อ",
+    items: [
+      { title: "การเชื่อมต่อ PSP", path: "/control/psp/list", icon: "banking", match: "/control/psp" },
+      { title: "กฎการกำหนดเส้นทาง", path: "/control/routing", icon: "analytics", match: "/control/routing" },
+      { title: "ไคลเอนต์ API", path: "/control/api-clients", icon: "lock", match: "/control/api-clients" },
+      { title: "Webhooks และเหตุการณ์", path: "/control/webhooks", icon: "folder", match: "/control/webhooks" },
+    ],
+  },
+
+  // ── Control plane · การกำกับดูแล ────────────────────────────────────────────
+  {
+    subheader: "Control plane · การกำกับดูแล",
+    items: [
+      { title: "การอนุมัติ", path: "/control/approvals", icon: "invoice", match: "/control/approvals" },
+      { title: "บันทึกการตรวจสอบ", path: "/control/audit", icon: "file", match: "/control/audit" },
+      { title: "การแจ้งเตือน", path: "/control/notifications", icon: "mail", match: "/control/notifications" },
+    ],
+  },
+
+  // ── Control plane · การเงิน & กระทบยอด ──────────────────────────────────────
+  {
+    subheader: "Control plane · การเงิน",
+    items: [
+      { title: "การกระทบยอด", path: "/control/reconciliation", icon: "banking", match: "/control/reconciliation" },
+      { title: "รายงาน", path: "/control/reports", icon: "analytics", match: "/control/reports" },
+    ],
+  },
+
+  // ── Control plane · องค์กร & ระบบ ───────────────────────────────────────────
+  {
+    subheader: "Control plane · องค์กร",
+    items: [
+      { title: "Tenants & Workspaces", path: "/control/tenants", icon: "lock", match: "/control/tenants" },
+      { title: "Originators", path: "/control/originators", icon: "user", match: "/control/originators" },
+    ],
+  },
+
+  // ── Demo (minimals pages) ────────────────────────────────────────────────
   {
     subheader: "Demo",
     items: [

@@ -1,48 +1,27 @@
 export type TransactionStatus =
-  | "succeeded"
-  | "pending"
-  | "processing"
-  | "failed"
-  | "voided"
-  | "refunded"
-  | "authorized";
+  | "completed"   // สำเร็จ
+  | "pending"     // รอชำระ
+  | "processing"  // กำลังประมวลผล
+  | "failed"      // ล้มเหลว
+  | "refunded"    // คืนเงิน
+  | "cancelled";  // ยกเลิก
 
-export type PaymentChannel = "card" | "qr" | "installment" | "wallet" | "bank";
+export type PaymentChannel = "card" | "promptpay" | "installment";
+export type Psp = "omise" | "2c2p";
 
-export type PspName = "2C2P" | "Omise";
-
-export interface TransactionCustomer {
-  name: string;
-  email: string;
-  phone: string;
-}
-
-export interface TransactionItem {
-  policyNo: string;
-  type: string;
-  period: string;
-  amount: number;
-}
-
-export interface TransactionOriginator {
-  id: string;
-  type: "branch" | "agent" | "broker" | "staff" | "app";
-  name: string;
-  code: string;
-  region: string;
-}
+export interface TransactionItem { name: string; amount: number; }
 
 export interface Transaction {
-  id: string;
-  ref: string;
-  customer: TransactionCustomer;
-  originator: TransactionOriginator;
+  id: string;            // = code, ใช้เป็น key
+  code: string;          // "TXN-2026-100000"
+  customerName: string;
+  customerEmail: string;
+  source: { code: string; label: string };  // ที่มา เช่น { code: "CPK", label: "ชยพร โกศลกิจ" }
   channel: PaymentChannel;
-  psp: PspName;
+  psp: Psp;
+  amount: number;        // บาท
   status: TransactionStatus;
-  amount: number;
-  itemCount: number;
-  items: TransactionItem[];
-  /** ISO string */
-  ts: string;
+  time: string;          // "14:29"
+  subItems: number;      // จำนวนรายการย่อย
+  items: TransactionItem[]; // length === subItems, sum(amount) === amount
 }

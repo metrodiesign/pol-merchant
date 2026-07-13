@@ -6,6 +6,116 @@ import { type NavGroup } from "./nav-config";
  * the path so the sidebar renders them visually without creating real pages.
  */
 export const minimalsNavConfig: NavGroup[] = [
+  // ── Main ────────────────────────────────────────────────────────────────
+  {
+    subheader: "Main",
+    items: [{ title: "แดชบอร์ด", path: "/main", icon: "dashboard" }],
+  },
+
+  // ── กรมธรรม์ ──────────────────────────────────────────────────────────────
+  {
+    subheader: "ระบบงานขาย",
+    items: [
+      {
+        title: "กรมธรรม์",
+        path: "/policy/list",
+        icon: "invoice",
+        match: "/policy",
+      },
+      {
+        title: "คำสั่งซื้อ",
+        path: "/order/list",
+        icon: "order",
+        match: "/order",
+      },
+      {
+        title: "รายการชำระเงิน",
+        path: "/transaction/list",
+        icon: "invoice",
+        match: "/transaction",
+      },
+    ],
+  },
+
+  // ── ผู้ใช้งาน & สิทธิ์ ──────────────────────────────────────────────────
+  {
+    subheader: "ผู้ใช้งาน & สิทธิ์",
+    items: [
+      {
+        title: "ผู้ใช้งาน",
+        path: "/user/list",
+        icon: "user",
+        match: "/user",
+        exclude: ["/user/role"],
+      },
+      {
+        title: "บทบาทและสิทธิ์",
+        path: "/user/role/list",
+        icon: "lock",
+        match: "/user/role",
+      },
+    ],
+  },
+
+  // ── ตัวแทน/นายหน้า ──────────────────────────────────────────────────────
+  {
+    subheader: "ตัวแทน/นายหน้า",
+    items: [
+      {
+        title: "ตัวแทน/นายหน้า",
+        path: "/producer/list",
+        icon: "user",
+        match: "/producer",
+        exclude: ["/producer/role"],
+      },
+      {
+        title: "บทบาทและสิทธิ์",
+        path: "/producer/role/list",
+        icon: "lock",
+        match: "/producer/role",
+      },
+    ],
+  },
+
+  // ── Control plane · การเชื่อมต่อ ───────────────────────────────────────────
+  {
+    subheader: "Control plane · การเชื่อมต่อ",
+    items: [
+      { title: "การเชื่อมต่อ PSP", path: "/control/psp/list", icon: "banking", match: "/control/psp" },
+      { title: "กฎการกำหนดเส้นทาง", path: "/control/routing", icon: "analytics", match: "/control/routing" },
+      { title: "ไคลเอนต์ API", path: "/control/api-clients", icon: "lock", match: "/control/api-clients" },
+      { title: "Webhooks และเหตุการณ์", path: "/control/webhooks", icon: "folder", match: "/control/webhooks" },
+    ],
+  },
+
+  // ── Control plane · การกำกับดูแล ────────────────────────────────────────────
+  {
+    subheader: "Control plane · การกำกับดูแล",
+    items: [
+      { title: "การอนุมัติ", path: "/control/approvals", icon: "invoice", match: "/control/approvals" },
+      { title: "บันทึกการตรวจสอบ", path: "/control/audit", icon: "file", match: "/control/audit" },
+      { title: "การแจ้งเตือน", path: "/control/notifications", icon: "mail", match: "/control/notifications" },
+    ],
+  },
+
+  // ── Control plane · การเงิน ─────────────────────────────────────────────────
+  {
+    subheader: "Control plane · การเงิน",
+    items: [
+      { title: "การกระทบยอด", path: "/control/reconciliation", icon: "banking", match: "/control/reconciliation" },
+      { title: "รายงาน", path: "/control/reports", icon: "analytics", match: "/control/reports" },
+    ],
+  },
+
+  // ── Control plane · องค์กร ──────────────────────────────────────────────────
+  {
+    subheader: "Control plane · องค์กร",
+    items: [
+      { title: "Tenants & Workspaces", path: "/control/tenants", icon: "lock", match: "/control/tenants" },
+      { title: "Originators", path: "/control/originators", icon: "user", match: "/control/originators" },
+    ],
+  },
+
   // ── Overview ────────────────────────────────────────────────────────────
   {
     subheader: "Overview",
