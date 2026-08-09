@@ -11,11 +11,9 @@ import { Logo } from "./logo";
 import { minimalsNavConfig } from "./minimals-nav-config";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
-import { AuthProvider } from "@/components/auth/auth-provider";
-import { AuthGuard } from "@/components/auth/auth-guard";
 
 /**
- * Shell for the /dashboard (minimals clone) route group.
+ * Shell for the /minimals (minimals clone) route group.
  *
  *  - Uses MinimalsTopbar (transparent, grey icons).
  *  - Passes minimalsNavConfig to SidebarNav via the optional `groups` prop.
@@ -23,14 +21,7 @@ import { AuthGuard } from "@/components/auth/auth-guard";
  *  - Uses a separate localStorage key so collapse state is independent.
  */
 export function MinimalsLayout({ children }: { children: React.ReactNode }) {
-  // BFF auth gate — ทุก protected route group route ผ่าน MinimalsLayout; /login + /logout ไม่ผ่าน -> public.
-  return (
-    <AuthProvider>
-      <AuthGuard>
-        <MinimalsShell>{children}</MinimalsShell>
-      </AuthGuard>
-    </AuthProvider>
-  );
+  return <MinimalsShell>{children}</MinimalsShell>;
 }
 
 function MinimalsShell({ children }: { children: React.ReactNode }) {
@@ -41,7 +32,7 @@ function MinimalsShell({ children }: { children: React.ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   // Pages whose live minimals layout uses a fluid (no max-width) container.
   const fullBleed =
-    pathname === "/dashboard/blank" || pathname === "/dashboard/kanban";
+    pathname === "/minimals/blank" || pathname === "/minimals/kanban";
 
   // Nav layout/color are driven by the settings drawer (persisted via provider).
   const isHorizontal = settings.navLayout === "horizontal";

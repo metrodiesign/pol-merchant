@@ -1,124 +1,202 @@
-> Canonical source for ALL agents (Claude loads via .claude/rules stub; Codex/OpenCode/Pi read directly).
-> แก้ที่นี่ที่เดียว — single source of truth.
+# Architecture
 
-# Project Structure
+## Overview
 
-## Folder Layout
+Repository มีสองชั้น:
 
-โครงสร้างจริงของ repo นี้ (ตัว framework เอง) เป็นตัวอย่าง concrete ของการแยก
-operating layer ที่ vendor-neutral ออกจาก per-agent adapter:
+1. Agent operating layer ใน `.ai/`, `.agents/`, `.claude/` และ `.githooks/`
+2. POL Merchant application ใน `src/` พร้อม runtime/deploy files ที่ root
 
-```
-.ai/                  # operating layer ที่ใช้ร่วมทุก agent (durable source of truth)
-  shared/             # มาตรฐาน + protocol ที่อ่านได้ทุก agent (PROJECT_CONTEXT, CODING_STANDARDS,
-                      #   ARCHITECTURE, LESSONS, TASK_PROTOCOL, EARS, REVIEW/TESTING/SECURITY/...)
-  bin/                # check engine จริง (gate-task.sh, check-secrets.sh, check-destructive.sh, ...)
-  roles/              # นิยาม role กลาง (spec-architect, bug-investigator, pbt-runner)
-  workflows/          # คู่มือ flow ต่อชนิดงาน (feature, bug-fix, code-review, ...)
-  templates/          # template ของ artifact (handoff note, review report, task brief, ...)
-  agents/             # per-agent adapter map (claude/, codex/, opencode/, pi/)
-.claude/              # Claude Code adapter — agents/, commands/, hooks/, rules/ (stub), skills/,
-                      #   specs/, settings.json
-.codex/               # Codex adapter — agents/, hooks/, config.toml
-.opencode/            # OpenCode adapter — agents/, commands/, plugins/
-.agents/              # adapter ร่วม (skills/)
-.githooks/            # enforcement floor (Tier 1): pre-commit, pre-push
-.github/              # CI workflows + pull_request_template.md
-scripts/              # automation (pane-loop, cost/trace tooling, spec-state, ...)
-docs/                 # คู่มือผู้ใช้ของ framework
-retrospectives/       # บันทึก retro รายเดือน
-.claude/specs/<feature-name>/   # spec artifact ต่อ feature: requirements.md, design.md, tasks.md
-                                #   (+ .github-sync.json sidecar เมื่อ sync แล้ว)
-```
+Spec เป็นตัวกำหนดการเปลี่ยน application ทุกงานต้องไหล
+requirements -> design -> tasks -> implementation -> evidence
 
-> layout นี้เป็นตัวแทนหลัก ไม่ exhaustive — ground truth คือ `ls` จริง;
-> /spec-retro มีขั้น steering sync คอยเทียบให้ตรง
+## Repository layout
 
-## Application structure (per project)
-
-`.ai/` คือ operating layer ของ framework ไม่ใช่ของแอป — แต่ละ project ที่ใช้ framework นี้
-จัดวาง source ของตัวเองอย่างไรก็ได้ตาม stack ที่เลือก โดยยึด PRINCIPLE ต่อไปนี้
-(ไม่ผูกกับ framework/ภาษาใดภาษาหนึ่ง):
-
-- แยก pure logic ออกจาก presentation — logic คำนวณ/validate/transform อยู่คนละชั้นกับ
-  ส่วน UI; ส่วน UI เรียกใช้ ไม่ฝังสูตรไว้ในตัว view
-- co-locate unit test ไว้ข้าง logic ที่มันทดสอบ (test อยู่ติดกับโค้ดที่รับผิดชอบ)
-- config/design token มี single source ที่เดียว — เรียกผ่าน semantic reference ไม่ทำซ้ำค่าดิบ
-- จัด import เป็นชั้น: external ก่อน → internal absolute → relative
-- naming convention ชัดและคงเส้นคงวาทั้ง project (ดู Naming Conventions ด้านล่าง)
-
-### โครงสร้าง `src/` จริงของ POL admin (pol-admin)
-
-แอปนี้คือ Next.js 16 App Router (frontend ล้วน, client-side, mock data). stack/idiom: [stack/nextjs.md](stack/nextjs.md).
-
-```
+```text
+.ai/
+  shared/                 shared project rules และ source of truth
+  agents/                 harness adapters
+  roles/                  role contracts
+  workflows/              spec-driven workflows
+  bin/                    guard และ trace scripts
+.agents/skills/           spec-* skills
+.claude/specs/            feature artifacts และ handoff
+.github/workflows/        CI
+configs/                  machine-readable policies
+docs/                     operating documentation
+public/                   static assets
+scripts/                  local checks และ runtime helpers
 src/
-  app/                 # App Router: layout.tsx (root: SettingsProvider, fonts, globals.css), dashboard routes
-    globals.css        #   design token single-source (@theme) + theme variants + dark mode
-  components/
-    ui/                # primitive: shadcn style base-nova บน @base-ui/react (ไม่ใช่ radix) — prop-only
-    payment/           # (*) POL domain (product surface): dashboard, transactions, invoices, psp, api-clients,
-                       #   webhooks, audit, users, roles, branches, agents, apps, reports, notifications,
-                       #   shell, toast (+ shared: status-badge, stat-card, entity-drawer, lifecycle-track)
-    dashboard/         # Minimals template demo modules (analytics/ecommerce/banking/.../policy) — scaffolding
-    layout/            # app shell: *-layout, sidebar/topbar, nav-config.ts, drawers, logo, settings-drawer
-    form/              # field wrapper: text/select/date/country/phone-country + form-control
-    charts/            # recharts wrapper: donut/radial/stacked-bar/sparkline + legend/tooltip
-    table/             # @tanstack/react-table UI: data-table, pagination, selected-action, no-data
-    shared/            # cross-app: custom-breadcrumbs, page-header, avatar-upload, fieldset
-    providers/         # settings-provider.tsx (theme/mode/preset/layout/font runtime control)
-  hooks/               # stateful logic: use-data-table, use-policy-table-with-cart, use-invoices-table,
-                       #   use-scroll-lock, use-is-mobile
-  lib/
-    mock/              # typed mock data (NO backend): originators/psp/transactions/webhooks/invoices/audit/...
-    utils.ts           # cn() (clsx+tailwind-merge), formatTHB()
-    breadcrumbs.ts     # buildBreadcrumbs() — map nav-config -> trail
-  types/               # domain contracts (PascalCase): transaction, psp, originator, role, permission,
-                       #   webhook, api-client, audit, policy, invoice, ...
+  app/                    Next.js App Router
+  components/             UI by domain
+  lib/                    domain, API และ shared logic
+Dockerfile
+docker-compose.yml
+next.config.ts
 ```
 
-> (*) = product surface จริง. `components/dashboard/*` + route ใน `app/dashboard/*` ส่วนใหญ่ยังเป็น
-> demo ของ Minimals template (de-navved); payment domain ยังไม่ wire เข้า route — ดู PROJECT_CONTEXT
-> "Current State". layout data flow: `lib/mock/*` -> hook -> page container spread เป็น props -> child render.
+## Application routes
 
-`.github-sync.json` ใน `.claude/specs/<feature>/` = sidecar manifest ของ `/spec-sync-github`
-(link map issue<->task) — commit เข้า repo, เฉพาะคำสั่ง sync เขียน; ห้ามแก้มือ,
-ห้ามใส่ link ลง tasks.md
+Public routes:
 
-## Naming Conventions (โปรเจกต์จริง)
+| Route | Responsibility |
+|---|---|
+| `/` | redirect ไป `/login` |
+| `/login` | Merchant sign-in entry |
+| `/register` | Merchant registration |
+| `/login-error` | public authentication error |
+| `/api/health` | runtime health response |
 
-- ไฟล์ `.ts`/`.tsx`: **kebab-case** (`use-data-table.ts`, `policy-columns.tsx`, `custom-breadcrumbs.tsx`)
-- type/interface: **PascalCase** (`Policy`, `PolicyStatus`, `SettingsContextValue`)
-- custom hook: prefix **`use-*`** (`use-policy-table-with-cart`)
-- context provider: suffix **`*-provider.tsx`** + hook เข้าถึงชื่อ `useXxx()` (`settings-provider.tsx` -> `useSettings()`)
-- mock data: `entity.ts` (`policies.ts` export `POLICIES: Policy[]`)
-- export เป็น **named function** เสมอ (`export function PolicyDataTable()`); default export เฉพาะ Next page/layout
+Protected Merchant route groups:
 
-## Import Ordering
+| Group | Responsibility |
+|---|---|
+| `/dashboard` | Merchant overview |
+| `/policy`, `/checkout` | policy และ checkout flow |
+| `/order` | order workflow |
+| `/transaction` | payment transaction views |
+| `/merchant/user` | Merchant user management |
+| `/merchant/role` | Merchant role and permission management |
 
-1. external (dependency ของภายนอก เช่น `react`, `@tanstack/react-table`)
-2. internal absolute ผ่าน alias **`@/*`** (`@/types/policy`, `@/components/ui/*`) — ใช้ absolute เสมอ
-3. relative (`./...`) เฉพาะภายในโมดูลเดียวกัน
+ทุก protected layout route ผ่าน `MerchantShellGate`
 
-> `"use client"` (ถ้ามี) อยู่บรรทัดบนสุดก่อน import ทั้งหมด.
-> นี่คือ convention เป้าหมาย — บางไฟล์เดิม (เช่น payment columns: `transactions-columns.tsx`,
-> `invoice-columns.tsx`, `roles-columns.tsx`) ยังเรียงสลับ external/internal อยู่; จัดใหม่ให้ตรงเมื่อแก้ไฟล์นั้น
+`MerchantShellGate` render `MinimalsLayout` เฉพาะเมื่อ:
 
-## Architectural Patterns
+```text
+NODE_ENV=development
+MERCHANT_SHELL_PREVIEW=true
+```
 
-- logic คำนวณ/validate แยกเป็นชั้นของตัวเอง — ส่วน UI เรียกใช้ ไม่ฝังสูตรไว้ในตัว view
-- data แยกจากตัว presentation — ส่งผ่าน props หรือ import โดยตรง ไม่ inline ก้อนใหญ่ในไฟล์ view
-- design token อยู่ที่เดียว — เรียกผ่าน semantic reference
-- ถ้า project มี UI: องค์ประกอบ interactive มี state ครบ (default/hover/focus/active/disabled)
-  และ accessible เป็น principle (keyboard reachable, focus มองเห็น, contrast พอ)
-- โค้ดพิสูจน์ว่าเขียวด้วย `.ai/bin/gate-task.sh` ตอน flip task เป็น `[x]`: gate อ่าน
-  `SDD_TYPECHECK_CMD` / `SDD_TEST_CMD` (auto-detect script ใน package.json ให้ project แบบ Node)
-  เพื่อรัน typecheck/test; เมื่อไม่มีทั้งคู่จะข้าม code-green แล้วเหลือเพียง Evidence gate
+กรณีอื่นตอบ 404 จนกว่า Merchant authentication จริงเข้ามาแทน gate
 
-## Anti-Patterns
+## Component boundaries
 
-- ห้าม duplicate magic constant / ค่าดิบซ้ำหลายที่ (ใช้ single source แทน)
-- ห้าม inline data ก้อนใหญ่ในไฟล์ presentation
-- ห้ามฝังสูตรคำนวณ/business logic ตรงในตัว view
-- ห้าม mark task `[x]` ทั้งที่ typecheck/test ยังไม่เขียว หรือไม่มี Evidence
-- test ต้อง assert พฤติกรรมที่สังเกตได้ ไม่ใช่ snapshot รายละเอียดภายในที่เปราะ
+```text
+src/app
+  -> src/components/<domain>
+      -> src/components/shared และ src/components/ui
+  -> src/lib/<domain>
+      -> src/lib/api/merchant
+```
+
+กฎ dependency:
+
+- route ประกอบ page/layout และเรียก domain component
+- domain component ไม่ import จาก route
+- shared UI ไม่ import domain feature
+- API client อยู่ `src/lib/api/merchant`
+- validation และ pure domain logic อยู่ `src/lib` และมี unit test ข้างไฟล์
+- ห้ามเพิ่ม public route ด้วยการนำ legacy component มา render โดยไม่มี spec
+
+## Layout and navigation
+
+- `src/app/layout.tsx` กำหนด Thai locale, font และ Merchant metadata
+- `src/components/layout/minimals-layout.tsx` เป็น protected application shell
+- `src/components/layout/nav-config.ts` เป็น navigation source เดียว
+- desktop ใช้ sidebar หรือ horizontal navigation ตาม settings
+- mobile ใช้ drawer navigation
+- logo, title และ browser metadata ต้องเป็น POL Merchant
+
+## Server and client boundaries
+
+- Server Component เป็นค่าเริ่มต้น
+- เพิ่ม `"use client"` เฉพาะ component ที่ใช้ state, event, browser API หรือ hook
+- environment gate ประเมินบน server
+- Client Component รับข้อมูล serializable ผ่าน props
+- ห้ามส่ง secret หรือ server-only environment variable ไป client
+
+## API topology
+
+Development rewrite ใน `next.config.ts`:
+
+```text
+/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
+```
+
+rewrite ถูกสร้างเฉพาะ `NODE_ENV=development`
+
+staging และ production ใช้ reverse proxy ภายนอก:
+
+```text
+browser -> same-origin /producer/* -> reverse proxy -> Merchant API
+```
+
+frontend ไม่รู้ backend origin ใน deployed environment
+
+## Runtime
+
+| Profile | Command | Host | Port |
+|---|---|---|---:|
+| development | `npm run dev` | localhost | 5300 |
+| development clean | `npm run dev:clean` | localhost | 5300 |
+| staging | `npm run start:staging` | `0.0.0.0` | 3000 |
+| production | `npm run start:production` | `0.0.0.0` | 3000 |
+
+Runtime baseline:
+
+- Node.js 22.19.0
+- npm 11.12.1
+- Next.js standalone output
+- Ubuntu 24.04 สำหรับ staging/production host
+
+`scripts/clean-development.mjs` ใช้ Node.js stdlib ลบ cache จึงทำงานทั้ง macOS
+และ Windows โดยไม่เพิ่ม cross-platform dependency
+
+## Container and release
+
+Dockerfile ใช้ multi-stage build:
+
+```text
+base -> deps -> builder -> runner
+```
+
+runner:
+
+- copy เฉพาะ standalone output และ static assets
+- รันด้วย non-root user UID 1001
+- expose port 3000
+- health check `/api/health`
+
+Compose รับ image ผ่าน `POL_MERCHANT_IMAGE` เพื่อ pin digest
+
+Release flow:
+
+```text
+build once -> staging same digest -> verify -> production same digest
+```
+
+Rollback เปลี่ยนกลับ digest ก่อนหน้า ไม่ rebuild
+
+## Verification architecture
+
+- Vitest: domain/runtime contracts
+- ESLint: code quality
+- TypeScript: static type contract
+- Next.js build: production compilation
+- browser verification: responsive UI, navigation, interaction, hydration
+- dependency audit: `scripts/check-production-audit.mjs`
+- spec trace: ทุก REQ ต้องมี design และ task coverage
+- guard suites: destructive command, bypass, secret และ task-evidence enforcement
+
+CI แยก:
+
+- `verify`: guard, secret scan, spec trace
+- `application`: macOS/Windows development smoke และ Ubuntu 24.04 full gate
+
+## Naming and imports
+
+- file/folder: `kebab-case`
+- React component/type: `PascalCase`
+- function/variable: `camelCase`
+- constant: `UPPER_SNAKE_CASE` เมื่อเป็นค่าคงที่จริง
+- ใช้ alias `@/*` สำหรับ import ภายใน `src`
+- export เฉพาะสิ่งที่มี consumer
+
+## Change rules
+
+- minimal diff ตาม approved spec
+- reuse component/helper ที่มีอยู่ก่อนสร้างใหม่
+- no dependency ใหม่ถ้า stdlib หรือ dependency เดิมพอ
+- test อยู่กับ non-trivial logic
+- source-baseline divergence ต้องมี requirement, evidence และ handoff
+- security remediation ทำได้เมื่อ audit policy บังคับและบันทึกเหตุผล

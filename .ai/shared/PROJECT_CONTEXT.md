@@ -1,87 +1,112 @@
-> Canonical source for ALL agents (Claude loads via .claude/rules stub; Codex/OpenCode/Pi read directly).
-> แก้ที่นี่ที่เดียว — single source of truth.
+# Project context
 
-# Product Overview
+## Product
 
-## Purpose
+POL Merchant คือเว็บพอร์ทัลสำหรับตัวแทนและนายหน้าภายนอก ใช้จัดการงานขาย
+กรมธรรม์ คำสั่งซื้อ การชำระเงิน ผู้ใช้งาน และบทบาทในขอบเขต Merchant
 
-**Payment Orchestration Layer (POL) — Admin** คือ frontend ของ **admin portal ภายในองค์กร
-(internal-only, พนักงานเท่านั้น)** สำหรับทีม payment operations ของบริษัทประกัน. ระบบ POL คือชั้นที่
-รับชำระเบี้ยประกัน (policy premium) แล้ว route ธุรกรรมไปยังหลาย Payment Service Provider
-(PSP เช่น 2C2P, Omise) ตามกฎ routing; frontend นี้คือหน้าจอบริหารของ POL — ติดตามสถานะธุรกรรม
-ตลอด lifecycle, จัดการ payment link, originator (สาขา/ตัวแทน/นายหน้า/connected app), webhook,
-API client, audit และ report/reconciliation.
+ผู้ใช้หลัก:
 
-One-line pitch: ที่เดียวให้พนักงานภายในมองเห็นและปฏิบัติการกับการรับชำระเบี้ยประกันข้าม PSP
-ทั้งหมด — capture/void/refund, routing, กระทบยอด, และ audit — บนหน้าจอ admin ตัวเดียว.
+- ตัวแทนและนายหน้าที่สมัครเข้าใช้งาน
+- ผู้ดูแล Merchant organization
+- ทีมพัฒนาและปฏิบัติการที่ deploy ระบบ
 
-## Target Users
+## Current phase
 
-ผู้ใช้คือ **พนักงานภายในองค์กรเท่านั้น** (ไม่ใช่ merchant หรือลูกค้าปลายทาง). RBAC แยกตาม role
-(ดู `src/types/role.ts`, `src/lib/mock/roles.ts`):
+Repository นี้เป็น Merchant bootstrap ที่คัดลอก baseline จาก source repository
+ที่ระบุใน approved spec ณ commit
+`bb001b30b1379df2eedd4ecfcb09c9d23afe6434` แล้วเปลี่ยน product/runtime contract
+สำหรับ Merchant
 
-- **System Admin** (`admin.system`) — คุมทั้งระบบ: จัดการ user/role, ตั้งค่า PSP/webhook/API client, ดู audit
-- **Finance Admin** (`admin.finance`) — refund, reconciliation, financial report (PSP/channel breakdown, settlement)
-- **Operator** (`admin.operator`) — ปฏิบัติการธุรกรรม: capture/void/refund, สร้าง payment link, ติดตามสถานะ
-- **Viewer** (`admin.viewer`) — read-only: ธุรกรรม, policy, report, audit
+สิ่งที่พร้อม:
 
-> หมายเหตุ: RBAC model นิยาม `merchant.*` role ไว้ด้วย แต่นั่นเป็นของ **merchant portal ซึ่งเป็นคนละ surface**.
-> repo นี้คือ **admin portal** สำหรับพนักงานภายใน — การกำหนด merchant role/permission ทำผ่าน roles module
-> ของ admin เอง.
+- Merchant identity และ public entry flow
+- route สำหรับ login, registration และ health check
+- protected Merchant shell สำหรับตรวจ UI ใน development
+- runtime แยก development, staging และ production
+- container และ CI gate
 
-## Problem It Solves
+สิ่งที่ยังไม่พร้อม:
 
-- **กระจายความเสี่ยง PSP** — รวมหลาย PSP ไว้หลังชั้น orchestration เดียว แล้วเลือก PSP อัตโนมัติ
-  ตามกฎ (channel/amount) เพื่อลด failure, คุม fee และเงื่อนไข settlement
-- **มองเห็นและปฏิบัติการรวมศูนย์** — ทีมภายในเห็นธุรกรรมทุกช่องทาง (card/QR/installment/wallet/bank)
-  และทำ capture/void/refund ได้จากที่เดียว แทนการสลับเข้าหลาย PSP console
-- **กระทบยอดและตรวจสอบ** — reconciliation (expected vs settled) + audit log ที่ลบไม่ได้
-  ครอบคลุมทุก sensitive action เพื่อ compliance และ forensics
-- **เชื่อมช่องทางขายและ integration** — ติดตาม originator (สาขา/ตัวแทน/นายหน้า/app),
-  จัดการ webhook ขาออก และ API client (OAuth2) สำหรับระบบที่มาเชื่อม
+- Merchant authentication และ session จริง
+- backend integration ครบทุก protected feature
+- production authorization policy
 
-## Key Features
+protected shell จึงปิดเป็นค่าเริ่มต้นและตอบ 404 เปิด preview ได้เฉพาะ development
+ด้วย `MERCHANT_SHELL_PREVIEW=true`
 
-ฟีเจอร์หลักคือ payment domain ที่อยู่ใน `src/components/payment/*` (ดู [ARCHITECTURE.md](ARCHITECTURE.md)):
+## Product boundaries
 
-- **Dashboard** — KPI การรับชำระ (ยอดวันนี้, link ค้าง, succeeded/failed), volume trend, PSP split, channel breakdown, top originators
-- **Transactions** — list + filter (status/originator/channel/PSP), bulk capture/void/refund, detail drawer + lifecycle track, export
-- **Payment Links / Invoices** — สร้าง/ส่ง link เก็บเบี้ย, สถานะ (draft/pending/paid/overdue/voided), hosted payment preview
-- **PSP** — config provider (2C2P/Omise) + routing rules engine (priority, when/then), test connection
-- **API Clients** — OAuth2 client (scope, IP allowlist, usage), rotate secret
-- **Webhooks** — endpoint + event delivery log (type, txn, status, attempts, latency), test
-- **Audit** — audit log viewer พร้อม sensitive-action highlight, filter, drill-down
-- **Users & Roles** — admin user management (status, IDP: Azure AD/Google/LINE) + RBAC role/permission matrix
-- **Originators** — Branches (สาขา), Agents/Brokers/Staff (ตัวแทน/นายหน้า/พนักงาน), Connected Apps
-- **Reports** — PSP/channel/originator breakdown + reconciliation table
-- **Notifications** — ตั้งค่าแจ้งเตือน payment event และ webhook delivery
+อยู่ในขอบเขต:
 
-## Business Objectives
+- `/login`, `/register`, `/login-error`
+- dashboard และงานขาย Merchant
+- policy, checkout, order และ transaction
+- Merchant user และ role management
+- Merchant API namespace `/producer/*`
 
-เป้าหมายของผลิตภัณฑ์ (เชิงผลลัพธ์ที่สังเกตได้ — KPI ตัวเลขจริงต้องยืนยันกับ stakeholder ก่อนใช้เป็นเกณฑ์ผ่าน):
+ไม่อยู่ในขอบเขต:
 
-- payment success rate สูงขึ้นจาก routing ที่เลือก PSP เหมาะกับ channel/amount
-- reconciliation match rate (expected vs settled) ครบถ้วน ตรวจสอบย้อนได้ทุกธุรกรรม
-- เวลาในการทำ refund/void ของ operator สั้นลง เทียบกับการเข้าหลาย PSP console
-- audit ครอบคลุม sensitive action 100% (ไม่มี action การเงินที่ไม่ถูกบันทึก)
+- back-office control plane
+- organization master-data management
+- การใช้ session หรือ credential จากระบบต้นทาง
+- การเปิด protected shell บน staging/production ก่อนมี authentication จริง
 
-## Non-Goals
+ไฟล์ legacy ที่ยังอยู่เพื่อรักษา source baseline ไม่ถือเป็น public product surface
+และห้ามเพิ่มเข้าการนำทางหรือ route โดยไม่มี spec ใหม่
 
-- **ไม่ใช่ merchant/customer-facing portal** — internal admin เท่านั้น
-- **ไม่ใช่ตัว hosted payment page** เอง — เป็นหน้าบริหารของระบบ ไม่ใช่หน้าที่ลูกค้าจ่ายเงิน
-- **ยังไม่มี backend จริง** — ทั้งหมดใช้ typed mock data (`src/lib/mock/*`); ไม่มี data fetching/auth จริง
-  ในชั้นนี้ (ดู Current State)
-- **Minimals template demo pages ไม่นับเป็นฟีเจอร์ของผลิตภัณฑ์** — หน้า analytics/ecommerce/banking/
-  booking/calendar/chat/mail/kanban/tour/post/job/product/order ฯลฯ ใต้ `src/app/dashboard/*`
-  คือ scaffolding ที่สืบทอดมาจาก admin template ไม่ใช่ขอบเขตของ POL admin
+## Runtime contract
 
-## Current State (ground truth)
+| Environment | Platform | Port | API mode |
+|---|---|---:|---|
+| development | macOS, Windows | 5300 | Next.js rewrite ไป `MERCHANT_API_ORIGIN` |
+| staging | Ubuntu 24.04 | 3000 | same-origin reverse proxy |
+| production | Ubuntu 24.04 | 3000 | same-origin reverse proxy |
 
-- **Payment surface สร้างครบเป็น component library + types + mock** — `src/components/payment/*`
-  (16 โมดูล), `src/types/*` (transaction, psp, originator, role, permission, webhook, api-client,
-  audit, policy, invoice), `src/lib/mock/*` (originators/psp/transactions/webhooks/invoices/audit/roles/...)
-- **ยังไม่ wire เข้า Next.js route** — `src/app/dashboard/*` ปัจจุบันยังเป็นหน้า demo ของ Minimals
-  template; `nav-config.ts` อ้าง route ของ payment (`/transactions`, `/psp`, ...) ไว้แล้วแต่ยังไม่มี
-  `page.tsx` จริง. **การ integrate routing คืองานถัดไป.**
-- ผลิตภัณฑ์เป็น **frontend ล้วน, client-side**, ภาษาไทยทั้ง UI; stack/idiom ดู
-  [stack/nextjs.md](stack/nextjs.md).
+Runtime ใช้ Node.js 22.19.0 และ npm 11.12.1
+
+staging และ production ต้องใช้ artifact/image digest เดียวกัน production deploy
+เกิดได้หลัง staging ผ่านเท่านั้น
+
+## API boundary
+
+Development:
+
+```text
+/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
+```
+
+staging/production:
+
+- browser เรียก `/producer/*` แบบ same-origin
+- reverse proxy ภายนอกส่งต่อไป Merchant API
+- ห้ามฝัง backend origin หรือ credential ใน client bundle
+
+## Source-baseline policy
+
+source baseline ใช้ตรวจว่าการคัดลอกครบ ไม่ได้ห้ามแก้เพื่อ:
+
+- Merchant identity และ route boundary
+- environment/runtime contract
+- security remediation ที่มีหลักฐาน
+- tests, CI และ operating documentation
+
+ทุก divergence ต้อง trace กลับ requirement/task และบันทึกใน spec handoff
+
+## Success criteria
+
+- ผู้พัฒนารัน development ได้บน macOS และ Windows ที่ port 5300
+- staging/production รันบน Ubuntu 24.04 ที่ port 3000
+- public UI แสดง Merchant identity โดยไม่มี product identity เดิม
+- protected route ไม่เปิดใน deployed environment ก่อน authentication พร้อม
+- test, lint, typecheck, build, dependency audit และ spec trace ผ่าน
+- production promote ผ่าน staging และมี rollback digest
+
+## Sources of truth
+
+- Requirements/design/tasks: `.claude/specs/merchant-portal-bootstrap/`
+- Architecture: `.ai/shared/ARCHITECTURE.md`
+- Next.js conventions: `.ai/shared/stack/nextjs.md`
+- Coding standards: `.ai/shared/CODING_STANDARDS.md`
+- Security rules: `.ai/shared/SECURITY_RULES.md`
+- Runbook: `README.md` และ `docs/dev-setup.md`

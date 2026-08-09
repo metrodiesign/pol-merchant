@@ -18,7 +18,7 @@ import {
 } from "@/lib/policy/policy";
 import { cartReducer } from "@/lib/policy/cart";
 import { useDataTable } from "@/hooks/use-data-table";
-import { policyColumns } from "@/components/policy/policy-table-columns";
+import { policyColumns } from "@/components/policy/table-columns";
 
 const ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
 export { ROWS_PER_PAGE_OPTIONS };
@@ -32,6 +32,7 @@ export interface PremiumCart {
   toggle(policy: Policy): void;
   remove(id: string): void;
   clear(): void;
+  replace(items: Policy[]): void;
 }
 
 interface UsePolicyTableWithCartParams {
@@ -63,6 +64,7 @@ export function usePolicyTableWithCart({
       ),
     remove: (id) => dispatch({ type: "remove", id }),
     clear: () => dispatch({ type: "clear" }),
+    replace: (newItems) => dispatch({ type: "replace", items: newItems }),
   };
 
   const table = useDataTable<Policy>({
@@ -87,7 +89,7 @@ export function usePolicyTableWithCart({
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
       sorting: [{ id: "vcp", desc: false }],
-      pagination: { pageIndex: 0, pageSize: 10 },
+      pagination: { pageIndex: 0, pageSize: 25 },
     },
   });
 

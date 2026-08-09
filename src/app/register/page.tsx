@@ -7,10 +7,10 @@ import { useSearchParams } from "next/navigation";
 import { CircleCheck } from "lucide-react";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
 import { Fieldset, Field, Label, Description } from "@/components/shared/fieldset";
-import { ProducerEditFormCard } from "@/components/producer/producer-edit-form-card";
+import { MerchantUserEditFormCard } from "@/components/merchant/user/edit-form-card";
 import { Logo } from "@/components/layout/logo";
-import { buildRegisterFormData, producerRegister } from "@/lib/api/producer-api";
-import type { ProducerFormData } from "@/types/producer";
+import { buildRegisterFormData, merchantUserRegister } from "@/lib/api/merchant/user";
+import type { MerchantUserFormData } from "@/types/merchant/user";
 
 // ponytail: shell-free public page — no layout.tsx in this folder, inherits only root
 // layout (mirror /login, REQ-11.2). Single client file; metadata title skipped (mock).
@@ -20,10 +20,10 @@ const cardStyle = {
     "rgba(145, 158, 171, 0.2) 0px 0px 2px 0px, rgba(145, 158, 171, 0.12) 0px 12px 24px -4px",
 };
 
-const emptyForm: ProducerFormData = {
+const emptyForm: MerchantUserFormData = {
   firstName: "",
   lastName: "",
-  personType: "individual",
+  personType: "Individual",
   idNumber: "",
   producerCode: "",
   licenseNumber: "",
@@ -119,7 +119,7 @@ function RegisterInner() {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSave = useCallback(
-    async (data: ProducerFormData) => {
+    async (data: MerchantUserFormData) => {
       // identity มาจาก ticket เท่านั้น — ไม่มี ticket = ลิงก์ไม่ถูกต้อง/หมดอายุ (terminal)
       if (!ticket) {
         window.location.href = "/login-error?reason=registration-link-invalid";
@@ -128,7 +128,7 @@ function RegisterInner() {
       setSubmitError(undefined);
       setSubmitting(true);
       try {
-        const res = await producerRegister(buildRegisterFormData(data, ticket, photo));
+        const res = await merchantUserRegister(buildRegisterFormData(data, ticket, photo));
         if (res.status === 201) {
           setSubmitted(true);
           return;
@@ -247,7 +247,7 @@ function RegisterInner() {
           </div>
 
           <div className="mmd:col-span-8">
-            <ProducerEditFormCard
+            <MerchantUserEditFormCard
               initialData={emptyForm}
               submitLabel="ลงทะเบียน"
               showAcceptTerms

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import {
   Public_Sans,
   Barlow,
@@ -67,8 +68,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard - Minimal UI",
-  description: "Minimal UI dashboard clone",
+  title: {
+    default: "POL Merchant",
+    template: "%s | POL Merchant",
+  },
+  description: "ระบบ POL Merchant สำหรับตัวแทนและนายหน้าภายนอก",
 };
 
 export default function RootLayout({
@@ -78,12 +82,16 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="th"
       className={`${publicSans.variable} ${barlow.variable} ${inter.variable} ${dmSans.variable} ${nunitoSans.variable} ${notoSansThai.variable} ${ibmPlexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: SETTINGS_INIT_SCRIPT }} />
+        <Script
+          id="settings-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: SETTINGS_INIT_SCRIPT }}
+        />
       </head>
       <body className="min-h-full">
         <SettingsProvider>{children}</SettingsProvider>

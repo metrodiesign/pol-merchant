@@ -1,379 +1,197 @@
-# pol-admin
+# POL Merchant
 
-Admin portal สำหรับทีม Payment Operations — ดูและปฏิบัติการธุรกรรมการรับชำระเบี้ยประกัน
-ข้าม PSP (2C2P, Omise) ทั้งหมดจากหน้าจอเดียว (internal-only, พนักงานเท่านั้น)
+เว็บพอร์ทัลสำหรับ merchant/producer ภายนอกที่ทำงานในบทบาทตัวแทนและนายหน้า
+พัฒนาด้วย Next.js 16 และ React 19
 
-## สารบัญ
+สถานะปัจจุบันเป็น Merchant bootstrap: หน้า public ใช้งานได้ ส่วน protected shell
+เปิดดูได้เฉพาะ development เมื่อกำหนด `MERCHANT_SHELL_PREVIEW=true`
+จนกว่าจะเชื่อม Merchant authentication จริง
 
-- [Tech Stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [ติดตั้งและตั้งค่าเริ่มต้น](#ติดตั้งและตั้งค่าเริ่มต้น)
-- [Environment Variables](#environment-variables)
-- [การรัน Dev Server](#การรัน-dev-server)
-- [Build สำหรับ Production](#build-สำหรับ-production)
-- [รันเทสต์](#รันเทสต์)
-- [โครงสร้างโปรเจกต์](#โครงสร้างโปรเจกต์)
-- [Authentication](#authentication)
-- [การพัฒนา](#การพัฒนา)
-- [Workflow ทีม](#workflow-ทีม)
+## Runtime matrix
 
----
+| Environment | ระบบปฏิบัติการ | คำสั่ง | Port | API |
+|---|---|---|---:|---|
+| development | macOS หรือ Windows | `npm run dev` หรือ `npm run dev:clean` | 5300 | proxy `/producer/*` ไป `MERCHANT_API_ORIGIN` |
+| staging | Ubuntu 24.04 | `npm run start:staging` | 3000 | same-origin reverse proxy |
+| production | Ubuntu 24.04 | `npm run start:production` | 3000 | same-origin reverse proxy |
+| container | Ubuntu 24.04 | `docker compose up -d` | 3000 | same-origin reverse proxy |
 
-## Tech Stack
-
-| ส่วน | เทคโนโลยี | เวอร์ชัน |
-|------|-----------|---------|
-| Framework | Next.js App Router | 16.2.6 |
-| Runtime | React | 19.2.4 |
-| ภาษา | TypeScript | ^5 |
-| Styling | Tailwind CSS v4 (CSS-first, ไม่มี config file) | ^4 |
-| UI Primitives | shadcn style `base-nova` บน `@base-ui/react` (ไม่ใช่ Radix) | ^1.5.0 |
-| Icons | lucide-react | ^1.16 |
-| Charts | recharts (ห่อใน `src/components/charts/*`) | ^3.8 |
-| Tables | @tanstack/react-table (ห่อใน `src/components/table/*`) | ^8.21 |
-| Test Runner | Vitest | ^4.1.9 |
-| Dev Port | 5300 | |
-
-> ยังไม่มี backend domain จริง — domain data ใช้ typed mock ใน `src/lib/mock/*`.
-> Auth เป็น server-side OIDC BFF จริงแล้ว (ดู [Authentication](#authentication)).
-
----
+`start:staging` และ `start:production` ต้องรันหลัง `npm run build`
 
 ## Prerequisites
 
-- **Node.js** >= 20 (แนะนำ LTS ล่าสุด)
-- **npm** >= 10 (มากับ Node 20)
-- ถ้าต้องการต่อ backend จริง: รัน [pol-core](../pol-core) บนพอร์ต 5100 ไว้ก่อน
+- Node.js 22.19.0
+- npm 11.12.1
+- Docker เมื่อทดสอบหรือ deploy container
 
-ตรวจสอบเวอร์ชัน:
+ตรวจเวอร์ชัน:
 
 ```bash
-node -v   # >= 20
-npm -v    # >= 10
+node --version
+npm --version
 ```
 
----
-
-## ติดตั้งและตั้งค่าเริ่มต้น
+## เริ่มพัฒนาบน macOS
 
 ```bash
-# 1. clone repo
-git clone git@github.com:metrodiesign/pol-admin.git
-cd pol-admin
-
-# 2. ติดตั้ง dependency
-npm install
-
-# 3. คัดลอก env template
+git clone https://github.com/metrodiesign/pol-merchant.git
+cd pol-merchant
+npm ci
 cp .env.example .env.local
+npm run dev:clean
 ```
 
-จากนั้นแก้ไขค่าใน `.env.local` ตาม [Environment Variables](#environment-variables)
+เปิด `http://localhost:5300`
 
----
+## เริ่มพัฒนาบน Windows
 
-## Environment Variables
+ใช้ PowerShell:
 
-สร้างไฟล์ `.env.local` จาก `.env.example` (ห้าม commit `.env.local` เข้า git)
-
-| ตัวแปร | ค่า dev | ค่า prod | คำอธิบาย |
-|--------|---------|----------|----------|
-| `ADMIN_API_ORIGIN` | `http://localhost:5100` | ว่าง (ไม่ตั้ง) | origin ของ BFF — Next.js จะ rewrite `/admin/*` และ `/producer/*` ไปยัง host นี้ บังคับ same-origin ใน dev |
-
-**Dev (ต่อ backend จริง):**
-
-```env
-ADMIN_API_ORIGIN=http://localhost:5100
+```powershell
+git clone https://github.com/metrodiesign/pol-merchant.git
+Set-Location pol-merchant
+npm ci
+Copy-Item .env.example .env.local
+npm run dev:clean
 ```
 
-**Dev (mock-only, ไม่ต้อง backend):**
+เปิด `http://localhost:5300`
 
-```env
-# ไม่ต้องตั้ง ADMIN_API_ORIGIN — rewrite จะ return [] อัตโนมัติ
+## Environment variables
+
+ใช้เฉพาะ development:
+
+| Variable | Default | หน้าที่ |
+|---|---|---|
+| `MERCHANT_API_ORIGIN` | `http://localhost:5100` | ปลายทาง Merchant API สำหรับ rewrite `/producer/*` |
+| `MERCHANT_SHELL_PREVIEW` | `false` | เปิด protected shell เมื่อเป็น `true` และ `NODE_ENV=development` |
+
+ข้อกำหนด:
+
+- ใช้ `.env.example` เป็น template ค่าปลอม
+- เก็บค่าจริงใน `.env.local` หรือ secret manager
+- ห้าม commit `.env`, `.env.*`, token, password หรือ connection string
+- staging และ production ห้ามใช้ development rewrite หรือ preview flag
+
+## คำสั่งหลัก
+
+| คำสั่ง | ผลลัพธ์ |
+|---|---|
+| `npm ci` | ติดตั้ง dependency ตาม lock file |
+| `npm run dev` | development server ที่ port 5300 |
+| `npm run dev:clean` | ลบ Next.js cache แล้วเปิด development server ที่ port 5300 |
+| `npm run build` | สร้าง production standalone artifact |
+| `npm run start:staging` | staging runtime ที่ `0.0.0.0:3000` |
+| `npm run start:production` | production runtime ที่ `0.0.0.0:3000` |
+| `npm test` | รัน Vitest |
+| `npm run lint` | รัน ESLint |
+| `npx tsc --noEmit` | ตรวจ TypeScript |
+| `npm run audit:production` | บังคับ production dependency audit policy |
+
+## Route surface
+
+Public:
+
+- `/` redirect ไป `/login`
+- `/login`
+- `/register`
+- `/login-error`
+- `/api/health` ตอบ `{"status":"ok"}`
+
+Protected Merchant preview:
+
+- `/dashboard`
+- `/policy/*`
+- `/checkout/*`
+- `/order/*`
+- `/transaction/*`
+- `/merchant/user/*`
+- `/merchant/role/*`
+
+เมื่อ preview ปิด protected route ตอบ 404 เพื่อไม่เปิด shell ที่ยังไม่มี
+Merchant authentication จริง
+
+## API contract
+
+Development ใช้ Next.js rewrite:
+
+```text
+/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
 ```
 
-**Production:**
+staging และ production ไม่มี rewrite นี้ ต้องให้ reverse proxy ภายนอก route
+`/producer/*` ไป Merchant API แบบ same-origin
 
-```env
-# เว้น ADMIN_API_ORIGIN ว่าง — reverse proxy เสิร์ฟ SPA + API เป็น origin เดียวกันอยู่แล้ว
-```
+## Docker
 
-> ห้าม hardcode credential ทุกชนิด อ่านจาก environment variable เท่านั้น
-
----
-
-## การรัน Dev Server
+Build และ smoke test:
 
 ```bash
-npm run dev
+docker build --tag pol-merchant:local .
+docker run --rm --detach --name pol-merchant-local --publish 3000:3000 pol-merchant:local
+curl --fail http://127.0.0.1:3000/api/health
+docker stop pol-merchant-local
 ```
 
-แอปขึ้นที่ [http://localhost:5300](http://localhost:5300)
-
-Next.js 16 ใช้ **Turbopack** เป็น default (เร็วกว่า Webpack มาก)
-
-**ดู raw log (แนะนำ):**
+Compose:
 
 ```bash
-rtk proxy npm run dev
+docker compose up --build --detach
+curl --fail http://127.0.0.1:3000/api/health
+docker compose down
 ```
 
-> หมายเหตุ: ถ้าใช้ `npm run dev` โดยตรงผ่าน rtk hook output จะถูก filter เป็น summary `Errors: N | Warnings: N` บดบัง log จริง — ใช้ `rtk proxy` เพื่อดู raw output
+Container ใช้ Node.js 22.19.0, npm 11.12.1, user ที่ไม่ใช่ root และ port 3000
 
-**ถ้าพบ Turbopack zombie** (server alive แต่ทุก route คืน 404):
+## Deploy
+
+ใช้ image digest เดียวกันทั้ง staging และ production:
+
+1. Build, test และ push image หนึ่งครั้ง
+2. บันทึก digest ใหม่และ digest ก่อนหน้า
+3. Deploy digest ใหม่เข้า staging บน Ubuntu 24.04
+4. ตรวจ `/api/health`, public routes และ protected-route gate
+5. Promote digest เดิมเข้า production เมื่อ staging ผ่าน
+6. Tag release และอัปเดต changelog
+
+ตัวอย่าง deploy image ที่ build แล้ว:
 
 ```bash
-# ดู body จาก curl ก่อน — 404 ที่มี HTML body = zombie
-curl -i http://localhost:5300
-
-# kill แล้ว restart
-lsof -ti :5300 | xargs kill -9
-npm run dev
+POL_MERCHANT_IMAGE=registry.example.com/pol-merchant@sha256:REPLACE_WITH_DIGEST docker compose pull
+POL_MERCHANT_IMAGE=registry.example.com/pol-merchant@sha256:REPLACE_WITH_DIGEST docker compose up --detach --no-build
+curl --fail http://127.0.0.1:3000/api/health
 ```
 
----
+ห้าม build ใหม่ระหว่าง promote จาก staging ไป production
 
-## Build สำหรับ Production
+### Rollback
 
-```bash
-npm run build
-npm run start
-```
+1. ตั้ง `POL_MERCHANT_IMAGE` กลับเป็น digest ก่อนหน้า
+2. รัน `docker compose up --detach --no-build`
+3. ตรวจ health และ public routes
+4. บันทึกเหตุผล rollback ใน release note
 
-`start` รันบนพอร์ต 5300 เช่นกัน
+production ต้องผ่าน staging ก่อนเสมอ และไม่ deploy ศุกร์เย็นหรือก่อนวันหยุดยาว
+ยกเว้น hotfix ฉุกเฉินที่มีผู้อนุมัติ
 
-**ตรวจสอบ Tailwind utility ที่ใช้ถูก generate:**
+## Quality gate
 
-```bash
-# หลัง build — grep ใน CSS จริง ไม่ใช่ source
-grep -r "orange" .next/static/chunks/*.css | head -5
-```
-
-> `next build` เขียว ≠ utility class ถูก generate เสมอ (unknown utility เงียบไม่ error)
-
-### Docker (deploy จริง)
+ก่อนเปิด PR:
 
 ```bash
-# build + tag ({package.json version}-{git short SHA})
-docker build -t pol-admin:$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD) .
-
-# run แบบ standalone (image เดี่ยว หลัง reverse proxy ที่ทำ same-origin routing ให้แล้ว)
-docker run -d -p 5300:5300 pol-admin:$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD)
-
-# หรือผ่าน compose (scope แค่ service pol-admin เดี่ยว ไม่มี pol-core/reverse-proxy)
-docker compose up -d --build
-```
-
-> `ADMIN_API_ORIGIN` ต้องเว้นว่างเสมอตอน build/run จริง — reverse proxy (nginx) ทำ same-origin
-> routing แทน Next.js rewrite ให้แล้ว (ดู [Environment Variables](#environment-variables)). ค่านี้ถูก
-> evaluate **ตอน build เท่านั้น** แล้วฝังตายตัวถาวรในผลลัพธ์ (`output: "standalone"` ไม่ re-read env
-> ตอน container start) — ถ้าตั้งไว้ตอน `NODE_ENV=production` build จะเห็น warning เตือนใน log ทันที.
-
-Container ประกาศ Docker `HEALTHCHECK` เอง — poll `GET /api/health` (`200 "ok"`, liveness ล้วน
-ไม่เช็ค backend) ทุก 30 วินาทีผ่าน Node โดยตรง (ไม่ใช่ `curl`/`wget` — `node:20-alpine` ไม่มีสองตัวนี้
-ติดมา) ดู `docker inspect --format='{{json .State.Health}}' <container>` เพื่อดูสถานะจริง.
-
----
-
-## รันเทสต์
-
-```bash
-# รัน test suite ทั้งหมด
+npm run audit:production
 npm test
-
-# watch mode (ระหว่าง dev)
-npx vitest
-```
-
-Test ทั้งหมดอยู่ที่ `src/**/*.test.ts` (co-located กับ logic ที่ทดสอบ)
-Environment = `node` (ไม่ใช่ jsdom)
-
-**Typecheck:**
-
-```bash
-npx tsc --noEmit
-# หรือ
-npm run build  # ตรวจ type พร้อมกัน
-```
-
-**Lint:**
-
-```bash
 npm run lint
+npx tsc --noEmit
+npm run build
 ```
 
----
+CI รัน guard/spec trace บน Ubuntu และ application matrix บน macOS, Windows,
+Ubuntu 24.04 ทุก PR เข้า `develop` หรือ `main`
 
-## โครงสร้างโปรเจกต์
+รายละเอียดเพิ่ม:
 
-```
-src/
-  app/                  # Next.js App Router
-    globals.css         # design token single-source (@theme) + dark mode + theme variants
-    layout.tsx          # root: SettingsProvider, fonts (Google 5 ตระกูล), SETTINGS_INIT_SCRIPT
-    dashboard/          # route group (Minimals template demo + POL routes ที่จะ wire ทีหลัง)
-
-  components/
-    ui/                 # primitive: shadcn/base-nova บน @base-ui/react — prop-only, ห้าม import @radix-ui
-    payment/            # (*) POL domain surface จริง:
-                        #   dashboard, transactions, invoices, psp, api-clients,
-                        #   webhooks, audit, users, roles, branches, agents, apps,
-                        #   reports, notifications, shell
-    dashboard/          # Minimals template demo (scaffolding, ไม่ใช่ product feature)
-    layout/             # app shell: sidebar/topbar, nav-config.ts, minimals-nav-config.ts
-    form/               # field wrapper: text/select/date/country/phone-country
-    charts/             # recharts wrapper (ใช้ wrapper เสมอ ห้ามเรียก recharts ตรงในหน้า)
-    table/              # @tanstack/react-table UI: data-table, pagination
-    shared/             # cross-app: breadcrumbs, page-header, avatar-upload
-    providers/          # settings-provider.tsx (theme/mode/preset runtime control)
-
-  hooks/                # stateful logic: use-data-table, use-policy-table-with-cart, ...
-  lib/
-    mock/               # typed mock data (NO backend): transactions/psp/webhooks/audit/...
-    api/                # API client จริง: admin-api.ts (adminFetch, getMe, login, logout)
-    utils.ts            # cn() (clsx+tailwind-merge), formatTHB()
-    breadcrumbs.ts      # buildBreadcrumbs()
-  types/                # domain contracts (PascalCase): transaction, psp, originator, role, ...
-```
-
-> `(*)` = product surface จริง. domain data ยังเป็น mock; auth เป็น real BFF แล้ว.
-
----
-
-## Authentication
-
-ระบบใช้ **server-side OIDC BFF** — FE ไม่ถือ token เลย
-
-- Session = **httpOnly cookie** ที่ backend set (ไม่มี GIS/id-token/Bearer ใน FE)
-- Guard = client-side: `auth-provider.tsx` (call `getMe` on mount) + `auth-guard.tsx` (loading/anon -> redirect `/login`)
-- Public routes (ไม่ผ่าน MinimalsLayout): `/login`, `/logout`, `/login-error`
-
-**Flow auth dev (ต้อง backend):**
-
-```
-Browser -> Next.js (port 5300)
-          -> /admin/* rewrite -> pol-core (port 5100)
-             <- httpOnly session cookie
-Browser ถือ session ผ่าน cookie (same-origin)
-```
-
-**CSRF:** `adminFetch` แนบ header `X-CSRF-Token` = cookie `adm_csrf` เฉพาะ mutation (POST/PUT/PATCH/DELETE)
-
-**Error redirect:** backend deny -> `/login-error?reason=<label>` (FE map เป็นข้อความใน `login-error/page.tsx`)
-
-> ถ้าต้องการ E2E test ที่ deterministic: ใช้ contract-mock backend (node http บน 5100) แทน Google SSO จริง
-
----
-
-## การพัฒนา
-
-### Naming Conventions
-
-| สิ่ง | รูปแบบ | ตัวอย่าง |
-|------|--------|----------|
-| ไฟล์ `.ts`/`.tsx` | kebab-case | `use-data-table.ts`, `policy-columns.tsx` |
-| Type/Interface | PascalCase | `Policy`, `PolicyStatus` |
-| Custom hook | prefix `use-*` | `use-policy-table-with-cart` |
-| Context provider | suffix `*-provider.tsx` | `settings-provider.tsx` -> `useSettings()` |
-| Mock data | `entity.ts` | `policies.ts` export `POLICIES: Policy[]` |
-| Export | named function เสมอ | `export function PolicyDataTable()` |
-
-> default export เฉพาะ Next.js page/layout
-
-### Import Ordering
-
-```ts
-"use client"; // บรรทัดบนสุดถ้ามี
-
-// 1. external
-import { useState } from "react";
-import { useReactTable } from "@tanstack/react-table";
-
-// 2. internal absolute (@/*)
-import { cn } from "@/lib/utils";
-import { DataTable } from "@/components/table/data-table";
-
-// 3. relative (เฉพาะในโมดูลเดียวกัน)
-import { columns } from "./columns";
-```
-
-### เพิ่มเมนู Sidebar
-
-ต้องแก้ **สองไฟล์** เสมอ:
-
-1. `src/components/layout/nav-config.ts` — breadcrumb + search
-2. `src/components/layout/minimals-nav-config.ts` — sidebar render จากไฟล์นี้เท่านั้น
-
-> แก้แค่ `nav-config.ts` เมนูจะไม่ขึ้นใน sidebar จริง
-
-### Pattern หลัก
-
-- **Data flow**: `lib/mock/*` -> hook -> page container spread props -> child render
-- **ไม่มี global store** (ไม่มี Redux/Zustand) — React hook + context เท่านั้น
-- **Design token**: อยู่ใน `src/app/globals.css` เป็น `@theme {}` ที่เดียว — ห้ามทำซ้ำค่าดิบ
-- **Charts**: ใช้ wrapper ใน `src/components/charts/*` เสมอ — ห้ามเรียก recharts โดยตรงในหน้า
-- **`cn()`**: ใช้รวม className ทุกที่ (`clsx` + `tailwind-merge`)
-
-### เพิ่ม Domain API (swap mock -> real)
-
-```ts
-// src/lib/api/<domain>.ts
-const ENDPOINT: string | null = null; // null = ใช้ mock, ใส่ path = ใช้ real fetch
-
-export async function getTransactions() {
-  if (!ENDPOINT) return import("@/lib/mock/transactions").then(m => m.TRANSACTIONS);
-  return adminFetch(ENDPOINT).then(r => r.json());
-}
-```
-
----
-
-## Workflow ทีม
-
-### Git Branches
-
-```
-main      — production release
-develop   — integration branch (ต้องผ่าน PR เสมอ)
-feat/*    — feature branches
-fix/*     — bug fix branches
-```
-
-### กฎการ commit/push
-
-- ห้าม commit ตรงเข้า `main` หรือ `develop` — ต้องผ่าน PR + review
-- ห้าม force push
-- PR merge ได้ต่อเมื่อ CI ผ่าน (test + lint)
-- ห้าม commit `.env.local`, `.env.*` (อยู่ใน `.gitignore` แล้ว)
-
-### การสร้าง Feature ใหม่ (Spec-Driven)
-
-โปรเจกต์ใช้ **spec-driven development** — spec มาก่อนโค้ดเสมอ
-
-```
-/spec-new <ชื่อฟีเจอร์>    — เริ่ม spec ใหม่, ถามคำถาม
-/spec-requirements         — สร้าง requirements.md (EARS notation)
-/spec-design               — สร้าง design.md
-/spec-tasks                — สร้าง tasks.md
-/spec-implement <task-id>  — implement ตาม task
-```
-
-Spec artifacts อยู่ที่ `.claude/specs/<feature-name>/`
-
-### CI / Hooks
-
-- **Pre-commit hook** (`.githooks/`): typecheck + lint — รันอัตโนมัติก่อน commit
-- **CI** (`.github/workflows/`): test + lint — required check ก่อน merge
-- **Claude hooks** (`.claude/hooks/`): guard เพิ่มเติมระหว่าง dev (secret scan, destructive op check)
-
-ถ้า hook block แล้วไม่แน่ใจว่าส่วนไหนของคำสั่งรันแล้ว ให้ตรวจ `git status` และ filesystem ก่อนรันซ้ำ
-
----
-
-## ลิงก์ที่เกี่ยวข้อง
-
-- [PROJECT_CONTEXT.md](.ai/shared/PROJECT_CONTEXT.md) — บริบทผลิตภัณฑ์
-- [ARCHITECTURE.md](.ai/shared/ARCHITECTURE.md) — โครงสร้างโปรเจกต์
-- [CODING_STANDARDS.md](.ai/shared/CODING_STANDARDS.md) — มาตรฐานการเขียนโค้ด
-- [LESSONS.md](.ai/shared/LESSONS.md) — บทเรียนจาก retrospective
-- [Stack: Next.js](.ai/shared/stack/nextjs.md) — idiom เฉพาะ stack นี้
+- [Development setup](docs/dev-setup.md)
+- [Production dependency audit](docs/dependency-audit.md)
+- [Project context](.ai/shared/PROJECT_CONTEXT.md)
+- [Architecture](.ai/shared/ARCHITECTURE.md)

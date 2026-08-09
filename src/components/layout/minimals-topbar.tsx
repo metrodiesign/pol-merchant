@@ -7,7 +7,6 @@ import { LanguagePopover } from "./language-popover";
 import { NotificationsDrawer } from "./notifications-drawer";
 import { ContactsPopover } from "./contacts-popover";
 import { SettingsDrawer } from "./settings-drawer";
-import { AccountDrawer } from "./account-drawer";
 import { cn } from "@/lib/utils";
 
 interface MinimalsTopbarProps {
@@ -15,7 +14,7 @@ interface MinimalsTopbarProps {
 }
 
 /**
- * Topbar for the /dashboard (minimals clone) shell.
+ * Topbar for the /minimals (minimals clone) shell.
  *
  * - Always-on blurred backdrop (bg-default @ 80% + 6px backdrop-blur); sticky top.
  *   Content scrolls under it and is blurred/tinted — no JS, no scroll listener.
@@ -51,7 +50,6 @@ export function MinimalsTopbar({ onMenuClick }: MinimalsTopbarProps) {
         <NotificationsDrawer variant="grey" />
         <ContactsPopover variant="grey" />
         <SettingsDrawer variant="grey" />
-        <AccountDrawer variant="grey" />
       </div>
     </header>
   );
