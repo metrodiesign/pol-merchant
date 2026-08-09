@@ -1,11 +1,14 @@
+name: pol-merchant
+
 services:
-  pol-admin:
-    build: .
+  pol-merchant:
+    image: ${POL_MERCHANT_IMAGE:-pol-merchant:local}
+    build:
+      context: .
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
     ports:
-      - "5300:5300"
-    # ADMIN_API_ORIGIN ต้องเว้นว่างเสมอใน prod (reverse proxy ทำ same-origin routing แทน
-    # Next.js rewrite — ดู .env.example). ไฟล์นี้ optional: ไม่มีก็รันได้ปกติ.
-    env_file:
-      - path: .env.production
-        required: false
+      - "3000:3000"
     restart: unless-stopped

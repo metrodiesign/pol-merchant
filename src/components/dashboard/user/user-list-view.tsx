@@ -7,8 +7,8 @@ import {
   getSortedRowModel,
   getPaginationRowModel,
 } from "@tanstack/react-table";
-import type { User, UserStatus } from "@/types/user";
-import { USERS } from "@/lib/mock/users";
+import type { User, UserStatus } from "@/types/admin/user";
+import { USERS } from "@/lib/mock/admin/users";
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTable } from "@/components/table/data-table";
 import { UserListTabs } from "./user-list-tabs";
@@ -18,9 +18,7 @@ import { userColumns } from "./user-table-columns";
 const STATUS_TABS: Array<{ label: string; value: UserStatus | "all" }> = [
   { label: "All", value: "all" },
   { label: "Active", value: "active" },
-  { label: "Pending", value: "pending" },
   { label: "Banned", value: "banned" },
-  { label: "Rejected", value: "rejected" },
 ];
 
 function getStatusCount(users: User[], status: UserStatus | "all"): number {
@@ -60,7 +58,7 @@ export function UserListView() {
       const f = value as { tab: UserStatus | "all"; role: string; search: string };
       const u = row.original;
       if (f.tab !== "all" && u.status !== f.tab) return false;
-      if (f.role && u.role !== f.role) return false;
+      if (f.role && !u.roles.includes(f.role)) return false;
       if (f.search) {
         const q = f.search.toLowerCase();
         if (

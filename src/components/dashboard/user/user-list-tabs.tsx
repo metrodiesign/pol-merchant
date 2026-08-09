@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronRight } from "lucide-react";
-import type { UserStatus } from "@/types/user";
+import type { UserStatus } from "@/types/admin/user";
 import { cn } from "@/lib/utils";
 
 type TabValue = UserStatus | "all";
@@ -22,10 +22,7 @@ interface UserListTabsProps {
 const INACTIVE_BADGE: Record<TabValue, string> = {
   all: "bg-foreground text-card",
   active: "bg-[rgba(34,197,94,0.16)] text-[rgb(17,141,87)]",
-  pending: "bg-[rgba(255,171,0,0.16)] text-[rgb(183,110,0)]",
   banned: "bg-[rgba(255,86,48,0.16)] text-[rgb(183,29,24)]",
-  rejected: "bg-[rgba(145,158,171,0.16)] text-[rgb(99,115,129)]",
-  disabled: "bg-[rgba(145,158,171,0.16)] text-[rgb(99,115,129)]",
 };
 
 export function UserListTabs({ tabs, active, onChange }: UserListTabsProps) {

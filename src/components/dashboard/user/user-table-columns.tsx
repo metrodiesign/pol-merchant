@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { User, UserStatus } from "@/types/user";
+import type { User, UserStatus } from "@/types/admin/user";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -17,10 +17,7 @@ import { Pencil, Trash2, EllipsisVertical } from "lucide-react";
 
 const statusStyles: Record<UserStatus, string> = {
   active: "bg-success/16 text-success-dark",
-  pending: "bg-warning/16 text-warning-dark",
   banned: "bg-error/16 text-error-dark",
-  rejected: "bg-grey-500/16 text-grey-600",
-  disabled: "bg-grey-500/16 text-grey-600",
 };
 
 function getInitials(name: string): string {
@@ -69,7 +66,7 @@ export const userColumns: ColumnDef<User>[] = [
           </Avatar>
           <div className="min-w-0">
             <Link
-              href={`/dashboard/user/${u.id}/edit`}
+              href={`/minimals/user/${u.id}/edit`}
               className="block truncate text-sm font-normal leading-[22px] text-foreground hover:underline"
             >
               {u.name}

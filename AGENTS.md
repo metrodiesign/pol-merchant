@@ -60,3 +60,13 @@ risky bash: `.ai/bin/check-destructive.sh '<cmd>'` and `.ai/bin/check-bypass.sh 
   before you mark it done, with an `Evidence:` block.
 - **Hand off cleanly.** Leave durable state in the spec files; fill the handoff note
   (`.ai/templates/handoff-note-template.md`) before you stop.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

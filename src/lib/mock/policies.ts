@@ -1,3 +1,5 @@
+// UI-only, ไม่มี endpoint รองรับ — pol-core ไม่มี entity Policy เลย และ Product
+// ไม่มีฟิลด์ประกันสักตัว (REQ-7.2) ต้องมี Policy read endpoint ก่อนถึงจะ align ได้.
 // Typed mock data (NO backend) — กรมธรรม์สำหรับ Policy Marketplace.
 // 48 records: active 34 / due_soon 6 / awaiting 4 / lapsed 2 / cancelled 2 (REQ-2.2).
 // 9 แถวแรก seed จาก screenshot จริง; ที่เหลือ generate แบบ deterministic (ไม่มี random).
@@ -34,7 +36,7 @@ const SEED: Policy[] = [
     customer: { name: "พัสกร อนาวิลกุล", phone: "081-998-6473", email: "patsakorn.a@mail.example", nationalId: "3-1009-00821-45-7" },
     product: { type: "ประกันการเดินทาง", plan: "Travel Worldwide" },
     source: { code: "JCM", channel: "จันทรพร มงคลรัตน์" },
-    insuranceKind: "VMI",
+    insuranceKind: "MISC",
     referenceType: "claim",
     referenceNo: "69108/กธ/W00353",
     extraInfo: { text: "กท 2087" },
@@ -55,7 +57,7 @@ const SEED: Policy[] = [
     customer: { name: "ขวัญข้าว นิรันดร์กุล", phone: "085-117-2398", email: "kwankhao.n@mail.example", nationalId: "1-5099-00417-12-2" },
     product: { type: "ประกันการเดินทาง", plan: "Travel Schengen" },
     source: { code: "CPK", channel: "ชัยพร โกศลกิจ" },
-    insuranceKind: "VMI",
+    insuranceKind: "MISC",
     referenceType: "policy",
     referenceNo: "06303-69100/รย/023885",
     extraInfo: { text: "กข 3042" },
@@ -76,7 +78,7 @@ const SEED: Policy[] = [
     customer: { name: "ฐาปนินทร์ เวชวุฒิ", phone: "092-008-4471", email: "thapanin.w@mail.example", nationalId: "5-3015-00733-08-9" },
     product: { type: "ประกันสุขภาพ", plan: "Health Care Gold" },
     source: { code: "PMJ", channel: "พิมพ์มาดา เสริมสกุล" },
-    insuranceKind: "VMI",
+    insuranceKind: "MISC",
     referenceType: "claim",
     referenceNo: "69108/กธ/W00354",
     extraInfo: { text: "ขก 0453" },
@@ -97,7 +99,7 @@ const SEED: Policy[] = [
     customer: { name: "กัลย์สุดา พิทักษ์เกษม", phone: "089-872-3144", email: "kalayasuda.p@mail.example", nationalId: "1-1020-00566-31-4" },
     product: { type: "ประกันการเดินทาง", plan: "Travel Asia" },
     source: { code: "SLM", channel: "สาขาสีลม" },
-    insuranceKind: "VMI",
+    insuranceKind: "MISC",
     referenceType: "policy",
     referenceNo: "06303-69100/รย/023901",
     extraInfo: { text: "พล 7781" },
@@ -118,7 +120,7 @@ const SEED: Policy[] = [
     customer: { name: "ภาณุวิชญ์ ธีรานนท์", phone: "098-712-3344", email: "panuwit.t@mail.example", nationalId: "1-1101-00298-77-1" },
     product: { type: "ประกันสุขภาพ", plan: "Health Smart Plus" },
     source: { code: "KKC", channel: "สาขาขอนแก่น" },
-    insuranceKind: "VMI",
+    insuranceKind: "MISC",
     referenceType: "policy",
     referenceNo: "06303-69100/รย/024010",
     extraInfo: { text: "533", tooltip: "ประกันบ้าน" },
@@ -160,7 +162,7 @@ const SEED: Policy[] = [
     customer: { name: "อาภัสรา ภาสกรพันธุ์", phone: "062-558-7720", email: "apatsara.p@mail.example", nationalId: "2-4007-00655-19-6" },
     product: { type: "ประกันอุบัติเหตุ", plan: "PA Plus" },
     source: { code: "NPI", channel: "ณัฐภัทร อินทรเดช" },
-    insuranceKind: "VMI",
+    insuranceKind: "MISC",
     referenceType: "policy",
     referenceNo: "06303-69100/รย/024055",
     extraInfo: { text: "นบ 4412" },
@@ -181,7 +183,7 @@ const SEED: Policy[] = [
     customer: { name: "ภาณุวิชญ์ ธีรานนท์", phone: "098-712-3344", email: "panuwit.t@mail.example", nationalId: "1-1101-00298-77-1" },
     product: { type: "ประกันอัคคีภัย", plan: "Home Shield Plus" },
     source: { code: "IPM", channel: "iPolicy Mobile" },
-    insuranceKind: "VMI",
+    insuranceKind: "FIRE",
     referenceType: "policy",
     referenceNo: "06303-69100/รย/024099",
     extraInfo: { text: "บ้านเลขที่ 88", tooltip: "ประกันอัคคีภัย" },
@@ -283,7 +285,13 @@ const GENERATED: Policy[] = REMAINING_STATUS.map((status, i) => {
     },
     product,
     source,
-    insuranceKind: isCar ? (i % 2 === 0 ? "VMI" : "CMI") : "VMI",
+    insuranceKind: isCar
+      ? i % 2 === 0
+        ? "VMI"
+        : "CMI"
+      : product.type === "ประกันอัคคีภัย"
+        ? "FIRE"
+        : "MISC",
     referenceType,
     referenceNo,
     extraInfo: { text: `${plate} ${pad((i * 37) % 1000, 3)}` },

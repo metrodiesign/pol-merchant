@@ -1,5 +1,5 @@
-import { MinimalsLayout } from "@/components/layout/minimals-layout";
+import { MerchantShellGate } from "@/components/layout/merchant-shell-gate";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <MinimalsLayout>{children}</MinimalsLayout>;
+  return <MerchantShellGate>{children}</MerchantShellGate>;
 }
