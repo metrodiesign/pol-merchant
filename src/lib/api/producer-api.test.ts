@@ -1,27 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import { buildRegisterFormData, producerLogin } from "./producer-api";
+import { buildRegisterFormData } from "./producer-api";
 import type { ProducerFormData } from "@/types/producer";
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe("producerLogin", () => {
-  it("navigate ไป /producer/auth/login พร้อม returnTo default (/register, encoded)", () => {
-    const location = { href: "" };
-    vi.stubGlobal("window", { location });
-    producerLogin();
-    expect(location.href).toBe("/producer/auth/login?returnTo=%2Fregister");
-  });
-
-  it("encode returnTo ที่ส่งเข้ามา", () => {
-    const location = { href: "" };
-    vi.stubGlobal("window", { location });
-    producerLogin("/a/b");
-    expect(location.href).toBe("/producer/auth/login?returnTo=%2Fa%2Fb");
-  });
-});
 
 describe("buildRegisterFormData", () => {
   const base: ProducerFormData = {

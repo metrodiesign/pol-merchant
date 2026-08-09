@@ -1,14 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { login } from "@/lib/api/admin-api";
-import { producerLogin } from "@/lib/api/producer-api";
 
 // landing หลัง login = /main (admin landing จริง). backend ต้องมี /main ใน AdminSession:ReturnUrlAllowlist
 // (ไม่งั้น reject -> falls back /). ดู coordination item ใน spec.
 const RETURN_TO = "/main";
+
+// ไม่มี producer-session/landing ในระบบ (ดู bugfix-producer-login-landing) — เหลือทางเข้าเดียว
+// ของฝั่งตัวแทนคือสมัครใหม่ผ่าน /register (ticket-gated, REQ-11.9).
+const PRODUCER_REGISTER_LINK_CLASS =
+  "mt-8 flex h-12 w-full items-center justify-center rounded-lg bg-white text-sm font-medium text-crop-blue transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-crop-blue";
 
 // โลโก้ Google สี (เลียนแบบปุ่ม GIS official ของเวอร์ชันเก่า)
 function GoogleIcon() {
@@ -100,15 +105,9 @@ export function LoginView() {
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
             <h2 className="text-center text-lg font-semibold text-white">สำหรับตัวแทน/นายหน้า</h2>
-            <Button
-              type="button"
-              size="lg"
-              className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => producerLogin()}
-            >
-              <GoogleIcon />
-              เข้าสู่ระบบด้วย Google
-            </Button>
+            <Link href="/register" className={PRODUCER_REGISTER_LINK_CLASS}>
+              สมัครเป็นตัวแทน
+            </Link>
           </section>
         </div>
       </div>
