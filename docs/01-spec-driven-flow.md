@@ -89,7 +89,8 @@ requirement ต้อง atomic, ไม่กำกวม, ทดสอบได
   tasks.md/design.md — **ห้าม clear/compact กลาง task ที่ state อยู่แต่ในแชต**. `precompact-persist`
   (PreCompact hook) inject เตือน persist state อัตโนมัติก่อน compact — แต่ best-effort เท่านั้น
   โมเดลยังเป็นคนเขียน (ดู [05-hooks.md](05-hooks.md))
-- prefer fresh session ต่อ task (reload ด้วย `@` อ่าน spec) ดีกว่า session ยาว
+- เลือก session ตาม coupling: batch task ที่พึ่ง context เดียวกัน; แยก fresh session เมื่อ task
+  อิสระหรือความเสี่ยงสูง และ persist state ที่ task boundary เสมอ
 
 ## 1.7 ตัวอย่าง spec ของจริง
 

@@ -1,189 +1,119 @@
-# Development setup
+# Development Setup
 
-คู่มือพัฒนา POL Merchant บน macOS และ Windows รวม smoke test สำหรับ Ubuntu 24.04
+คู่มือ single Next.js application ที่ repository root สำหรับ macOS, Windows และ Ubuntu 24.04.
 
-## Compatibility
+## Prerequisites
 
-| Profile | OS | Node.js | npm | Port |
-|---|---|---:|---:|---:|
-| development | macOS, Windows | 22.19.0 | 11.12.1 | 5300 |
-| staging | Ubuntu 24.04 | 22.19.0 | 11.12.1 | 3000 |
-| production | Ubuntu 24.04 | 22.19.0 | 11.12.1 | 3000 |
+- Node.js 22.19.0
+- npm 11.12.1
+- Git
+- Docker Desktop หรือ Docker Engine เมื่อใช้ container
 
-ใช้ `npm ci` เสมอเพื่อให้ dependency ตรง `package-lock.json`
-
-## macOS
+ตรวจเวอร์ชัน:
 
 ```bash
-git clone https://github.com/metrodiesign/pol-merchant.git
-cd pol-merchant
+node --version
+npm --version
+```
+
+## Install
+
+macOS และ Linux:
+
+```bash
+npm install --global npm@11.12.1
 npm ci
 cp .env.example .env.local
-npm run dev:clean
+npm run dev
 ```
 
-เปิด `http://localhost:5300/login`
-
-## Windows
-
-ใช้ PowerShell:
+Windows PowerShell:
 
 ```powershell
-git clone https://github.com/metrodiesign/pol-merchant.git
-Set-Location pol-merchant
+npm install --global npm@11.12.1
 npm ci
 Copy-Item .env.example .env.local
-npm run dev:clean
+npm run dev
 ```
 
-เปิด `http://localhost:5300/login`
+เปิด `https://localhost:3002`. Next.js สร้าง self-signed certificate สำหรับ development;
+ยืนยัน certificate ใน browser ครั้งแรกได้. `certificates/` ถูก ignore.
 
-คำสั่งทั้งหมดใช้ Node.js จึงไม่พึ่ง Bash สำหรับ development
+## Environment
 
-## Development configuration
-
-`.env.example` มีเฉพาะค่าปลอม:
+Template อยู่ที่ root `.env.example`; ค่าบนเครื่องอยู่ที่ root `.env.local`.
 
 ```dotenv
-MERCHANT_API_ORIGIN=http://localhost:5100
-MERCHANT_SHELL_PREVIEW=false
+ADMIN_API_ORIGIN=https://localhost:5001
+NEXT_PUBLIC_API_ORIGIN=https://localhost:5001
 ```
 
-- `MERCHANT_API_ORIGIN` ใช้กับ development rewrite เท่านั้น
-- ตั้ง `MERCHANT_SHELL_PREVIEW=true` เมื่อต้องตรวจ protected shell บนเครื่องพัฒนา
-- preview ทำงานเฉพาะเมื่อ `NODE_ENV=development`
-- ห้ามนำ preview flag หรือ development API origin ไปใช้บน staging/production
-- ห้าม commit `.env.local` หรือ secret
+- `ADMIN_API_ORIGIN` เปิด development rewrites ใน `next.config.ts`
+- `NEXT_PUBLIC_API_ORIGIN` กำหนด origin ที่ client API adapters ใช้; ค่านี้เปิดเผยต่อ browser
+- ถ้าไม่กำหนด ตัว client ใช้ same-origin และ Next rewrites เป็น empty list
+- Production same-origin ปกติไม่ต้องตั้งสองค่านี้
+- ห้ามเก็บ token, password หรือ credential ในไฟล์ที่ commit
 
-หลังเปลี่ยน environment variable ให้ restart development server
-
-## Merchant API
-
-เมื่อเรียก:
+เมื่อ `ADMIN_API_ORIGIN` มีค่า:
 
 ```text
-http://localhost:5300/producer/users
+/admin/:path*    -> ADMIN_API_ORIGIN/api/v1/admins/:path*
+/producer/:path* -> ADMIN_API_ORIGIN/api/v1/merchants/:path*
+/api/:path*      -> ADMIN_API_ORIGIN/api/:path*
 ```
 
-development server rewrite ไป:
+## Commands
 
-```text
-http://localhost:5100/api/v1/merchants/users
-```
+| คำสั่ง | ใช้ทำอะไร |
+|---|---|
+| `npm run dev` | HTTPS dev server port 3002 |
+| `npm run dev:clean` | เก็บ cache เก่าออกแล้วเปิด dev server |
+| `npm test` | รัน Vitest ทั้ง source และ scripts |
+| `npm run lint` | รัน ESLint |
+| `npm run typecheck` | รัน TypeScript no-emit |
+| `npm run build` | สร้าง standalone production build |
+| `npm start` | รัน build ที่ port 3002 |
+| `npm run audit:production` | ตรวจ production dependency vulnerabilities |
 
-เปลี่ยน host/port backend ได้ผ่าน `MERCHANT_API_ORIGIN` โดยไม่แก้ source code
-
-staging และ production ใช้ reverse proxy ภายนอกแบบ same-origin; Next.js ไม่สร้าง
-development rewrite ในสอง environment นี้
-
-## Smoke test
-
-เมื่อ server พร้อม:
-
-```bash
-curl --fail http://127.0.0.1:5300/api/health
-curl --fail http://127.0.0.1:5300/login
-```
-
-ผล health ต้องเป็น:
-
-```json
-{"status":"ok"}
-```
-
-PowerShell:
-
-```powershell
-(Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5300/api/health).Content
-(Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5300/login).StatusCode
-```
-
-## Port 5300 ถูกใช้งาน
-
-ตรวจบน macOS:
-
-```bash
-lsof -nP -iTCP:5300 -sTCP:LISTEN
-```
-
-ตรวจบน Windows:
-
-```powershell
-Get-NetTCPConnection -LocalPort 5300 -State Listen
-```
-
-หยุด application เจ้าของ port แล้วรัน `npm run dev:clean` ใหม่
-คำสั่งนี้ลบเฉพาะ `.next` และ `tsconfig.tsbuildinfo` ก่อนเปิด Next.js
-
-## Local quality gate
+## Verification
 
 ```bash
 npm run audit:production
 npm test
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm run build
+npm start
 ```
 
-`npm run lint` อาจรายงาน warning ที่อนุญาต แต่ต้องไม่มี error
-`npm run audit:production` ต้องผ่าน policy ใน
-`configs/production-audit-policy.json`
-
-## Ubuntu 24.04 staging smoke
+Production probes:
 
 ```bash
-npm ci
-npm run build
-npm run start:staging
+curl -i http://127.0.0.1:3002/
+curl -i http://127.0.0.1:3002/register
+curl -i 'http://127.0.0.1:3002/merchant/user/list?tab=active'
 ```
 
-เปิด terminal อีกหน้าตรวจ:
+ผลที่ต้องได้:
+
+- `/` -> `307 Location: /dashboard`
+- `/register` -> `200`
+- legacy Merchant URL -> `308 Location: /user/list?tab=active`
+
+## Docker
 
 ```bash
-curl --fail http://127.0.0.1:3000/api/health
-curl --fail http://127.0.0.1:3000/login
+docker compose build
+docker compose up
 ```
 
-หยุด staging process ก่อนเปิด profile อื่น เพราะ staging และ production ใช้ port 3000
+Container รัน `node server.js` จาก root standalone artifact, UID 1001, port 3002.
+Healthcheck ตรวจ root redirect ทุก 30 วินาที.
 
-## Ubuntu 24.04 production smoke
+## Troubleshooting
 
-ใช้ build artifact เดียวกับ staging:
-
-```bash
-npm run start:production
-```
-
-ตรวจ:
-
-```bash
-curl --fail http://127.0.0.1:3000/api/health
-curl --fail http://127.0.0.1:3000/login
-```
-
-การ deploy จริงต้อง promote image digest ที่ผ่าน staging แล้ว ห้าม rebuild
-ดูขั้นตอน deploy และ rollback ใน `README.md`
-
-## Docker smoke
-
-```bash
-docker build --tag pol-merchant:local .
-docker run --rm --publish 3000:3000 pol-merchant:local
-```
-
-ตรวจจาก terminal อื่น:
-
-```bash
-curl --fail http://127.0.0.1:3000/api/health
-```
-
-Container ต้องรายงาน `healthy` หลัง health check ผ่าน
-
-## CI coverage
-
-- macOS: `npm run dev:clean` และ development smoke ที่ port 5300
-- Windows: `npm run dev:clean` และ development smoke ที่ port 5300
-- Ubuntu 24.04: audit, test, lint, TypeScript, build, staging smoke และ production smoke
-- Ubuntu: guard regression, secret scan และ spec trace
-
-CI จริงรันเมื่อเปิด PR; ผล local ไม่แทนผล remote CI
+- Port 3002 ถูกใช้: ปิด process เดิมก่อนเปิด dev/start
+- TypeScript อ้าง route ที่ไม่มีแล้ว: รัน `npm run dev:clean` หรือย้าย generated `.next` ออก
+- Dependency tree ไม่ตรง lockfile: รัน `npm ci`, อย่าแก้ใน `node_modules`
+- API cookie/CORS ผิด: ใช้ relative API path และตั้ง `ADMIN_API_ORIGIN` เพื่อ same-origin proxy
+- Node version warning: สลับ runtime ให้ตรง 22.19.0 ก่อนตีความ gate result

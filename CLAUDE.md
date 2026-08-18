@@ -89,8 +89,8 @@ in-session convenience on top of that floor.
   triggers, write the current state — active task ID, decisions + rationale, what's
   done, the next step — into tasks.md / design.md. NEVER clear or compact in the
   middle of an unfinished task whose state lives only in this conversation.
-- Prefer a fresh session per cohesive task (reload context by reading the spec with
-  `@`) over one long session — a clean, focused context is also more accurate.
+- Choose session boundaries by coupling: batch tasks that share context; use a fresh
+  session for independent or high-risk tasks. Persist state at every task boundary.
 - Keep this file lean, but NEVER remove a rule that prevents a real mistake.
   Correctness outranks token savings: if economizing would risk a wrong result, do
   not economize — tell me instead.

@@ -3,18 +3,22 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { Clock } from "lucide-react";
 
+// backend redirect ปลายทางเมื่อ login callback ไม่ผ่าน (Admin/Producer OIDC ErrorPath="/login-error")
+// พร้อม ?reason=<label>. label จาก {Admin,Producer}LoginService/{Admin,Producer}OidcAuthentication.DenyAsync.
 const REASON_MESSAGES: Record<string, string> = {
-  "not-provisioned": "บัญชีนี้ยังไม่ได้รับสิทธิ์ กรุณาติดต่อผู้ดูแลระบบ",
+  "not-provisioned": "บัญชี Google นี้ยังไม่ได้รับสิทธิ์ — ยังไม่ถูก provision เป็น admin. ติดต่อผู้ดูแลระบบ",
   suspended: "บัญชีถูกระงับการใช้งาน. ติดต่อผู้ดูแลระบบ",
   "access-denied": "การเข้าสู่ระบบถูกยกเลิก",
-  "missing-subject": "ไม่พบข้อมูลบัญชี",
+  "missing-subject": "ไม่พบข้อมูลบัญชีจาก Google",
   "resolve-failed": "ตรวจสอบสิทธิ์ไม่สำเร็จ กรุณาลองใหม่",
   "session-write-failed": "สร้าง session ไม่สำเร็จ กรุณาลองใหม่",
-  "email-unverified": "อีเมลของคุณยังไม่ได้ยืนยัน กรุณายืนยันอีเมลแล้วลองใหม่",
+  // producer SSO callback (คู่มือ §6.2) — suspended/access-denied/resolve-failed/session-write-failed ใช้ร่วมด้านบน
+  "email-unverified": "อีเมล Google ของคุณยังไม่ได้ยืนยัน กรุณายืนยันอีเมลแล้วลองใหม่",
   "hd-mismatch": "กรุณาใช้บัญชีอีเมลขององค์กรที่ได้รับอนุญาต",
   "auth-failed": "การยืนยันตัวตนล้มเหลว กรุณาลองใหม่",
   "ticket-issue-failed": "เกิดข้อผิดพลาดของระบบ กรุณาลองใหม่",
-  "missing-identity": "ไม่พบข้อมูลบัญชี",
+  "missing-identity": "ไม่พบข้อมูลบัญชีจาก Google",
+  // FE-minted (จากหน้า /register เมื่อ submit ไม่ผ่าน terminal)
   "registration-link-invalid": "ลิงก์ลงทะเบียนไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง",
   "already-registered": "บัญชีนี้ลงทะเบียนไว้แล้ว กรุณาเข้าสู่ระบบ",
 };
@@ -27,8 +31,9 @@ const PENDING_MESSAGE = "ระบบได้รับข้อมูลกา�
 const linkButtonClass =
   "mt-8 inline-flex h-11 w-full items-center justify-center rounded-control bg-primary px-5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1";
 
-export const metadata: Metadata = { title: "เข้าสู่ระบบไม่สำเร็จ" };
+export const metadata: Metadata = { title: "เข้าสู่ระบบไม่สำเร็จ POL Pay" };
 
+// Header bar — เหมือนหน้า /login (โลโก้วิริยะในกล่องขาว + tagline บนพื้นน้ำเงิน)
 function LoginErrorHeader() {
   return (
     <header className="flex min-h-[60px] shrink-0 items-stretch gap-3 bg-crop-blue pr-4 sm:min-h-[70px] sm:gap-4 sm:pr-6">
@@ -55,6 +60,7 @@ function LoginErrorHeader() {
   );
 }
 
+// Banner — responsive: scale ตาม aspect จริง (1280x300) ไม่ crop
 function LoginErrorBanner() {
   return (
     <Image
@@ -69,6 +75,7 @@ function LoginErrorBanner() {
   );
 }
 
+// shell-free (root layout only) -> public. backend เด้งมาที่นี่เมื่อ deny; อ่าน reason แสดงข้อความ.
 export default async function LoginErrorPage({
   searchParams,
 }: {

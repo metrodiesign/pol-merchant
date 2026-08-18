@@ -13,8 +13,9 @@ shared workflow. Honest and specific; nothing here is speculative.
   whole feature — requirements, design, tasks, the files it touches — in context
   and implement a cohesive task end-to-end in one pass. Task sizing in this repo
   assumes that (about 5–10 tasks per feature, vertical slices, not micro-steps).
-- Because the window is large, prefer a fresh session per cohesive task (reload
-  with `@`) over one long session; a clean, focused context is also more accurate.
+- Choose session boundaries by coupling: batch tasks that reuse the same context;
+  use a fresh session for independent or high-risk work. Persist state at every
+  task boundary either way.
 
 ## Skills and Workflow tools
 

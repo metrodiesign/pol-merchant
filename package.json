@@ -2,17 +2,19 @@
   "name": "pol-merchant",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.19.0"
+  },
   "packageManager": "npm@11.12.1",
   "scripts": {
-    "dev": "next dev -p 5300",
-    "dev:clean": "node scripts/clean-development.mjs",
+    "dev": "next dev -p 3002 --experimental-https",
+    "dev:clean": "node -e \"const fs=require('node:fs'); for (const path of ['.next','tsconfig.tsbuildinfo']) fs.rmSync(path,{recursive:true,force:true})\" && npm run dev",
     "build": "next build",
-    "start": "npm run start:production",
-    "start:staging": "next start -p 3000 -H 0.0.0.0",
-    "start:production": "next start -p 3000 -H 0.0.0.0",
+    "start": "next start -p 3002",
     "audit:production": "node scripts/check-production-audit.mjs",
-    "lint": "eslint",
-    "test": "vitest run"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -20,13 +22,12 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
-    "next": "16.3.0",
+    "next": "16.3.1",
     "react": "19.2.4",
     "react-day-picker": "^9.14.0",
     "react-dom": "19.2.4",
     "react-qr-code": "^2.2.0",
     "recharts": "^3.8.1",
-    "shadcn": "^4.8.0",
     "sharp": "0.35.3",
     "simplebar": "^6.3.3",
     "simplebar-react": "^3.3.2",
@@ -39,7 +40,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.3.1",
+    "shadcn": "4.8.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.9"

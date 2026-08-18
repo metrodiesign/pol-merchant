@@ -72,10 +72,9 @@ relying on it.
   reviewer or investigator stance. This is the floor-only equivalent of Codex's
   `.codex/agents/*.toml` and OpenCode's `.opencode/agents/*` native subagents.
 - **Task-gate** — Pi has no PostToolUse / `file.edited` hook, so there is no native,
-  in-session task-gate. The gate is enforced by the Tier 1 floor only: the committed
-  `pre-commit` git hook + CI run the same typecheck / test / `Evidence:` checks that
-  `../../bin/gate-task.sh` carries, blocking a `[x]` flip that is not green at commit
-  and PR. Optionally run `../../bin/gate-task.sh` yourself before marking a task done.
+  in-session task-gate. Pre-commit checks staged `Evidence:` only; CI runs typecheck,
+  tests, and the remaining application gates. Run `../../bin/gate-task.sh` yourself
+  before marking a task done to get the same early code-green + Evidence verdict.
 - **MCP / browser-verify** — not applicable: Pi does not host MCP servers in this
   setup, so the chrome-devtools browser-verify recipe is not available natively.
   Verify UI changes manually or defer browser-verify to a Codex/OpenCode session.

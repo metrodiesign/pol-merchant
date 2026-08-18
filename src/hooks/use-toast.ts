@@ -12,7 +12,7 @@ let nextId = 0;
 
 /**
  * Toast ขนาดเล็กใช้ร่วมทุกโมดูล — ไม่มี dependency ใหม่ (repo ไม่มี toast lib).
- * ยกขึ้นเป็นของกลางจาก pattern เดิมของ admin/role + merchant/role (สำเนาเดิมยังไม่ migrate).
+ * ยกขึ้นเป็นของกลางจาก pattern เดิมของ Admin role + Merchant role.
  * `show(message)` เพิ่ม toast + auto-dismiss; ใช้คู่กับ `<Toaster>` (components/shared/toaster.tsx).
  */
 export function useToast() {

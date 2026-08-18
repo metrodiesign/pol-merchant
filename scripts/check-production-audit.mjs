@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const policyPath = new URL("../configs/production-audit-policy.json", import.meta.url);
+const policyPath = new URL("./production-audit-policy.json", import.meta.url);
 
 function advisoryUrls(vulnerability) {
   return vulnerability.via

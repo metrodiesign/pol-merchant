@@ -341,7 +341,7 @@ export function JobDetailsView({ job }: JobDetailsViewProps) {
                   width={56}
                   height={56}
                   className="size-14 object-cover"
-          
+
                 />
               </div>
               <h6 className="text-base font-semibold text-grey-800">{job.company}</h6>

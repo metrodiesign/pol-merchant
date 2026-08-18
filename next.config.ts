@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
+// dev: ตั้ง ADMIN_API_ORIGIN=https://localhost:5001 ให้ proxy /admin/* + /producer/* ไป BFF เดียวกัน
+// (producer-google-sso.md §18.4 — producer endpoints อยู่ API host เดียวกับ admin) — บังคับ same-origin.
+// prod: เว้นว่าง — reverse proxy เสิร์ฟ SPA + API เป็น origin เดียวกันอยู่แล้ว ไม่ต้อง rewrite.
+const adminApiOrigin = process.env.ADMIN_API_ORIGIN;
+
 const nextConfig: NextConfig = {
+  agentRules: false,
   output: "standalone",
   images: {
     remotePatterns: [
@@ -18,17 +24,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  async rewrites() {
-    if (process.env.NODE_ENV !== "development") return [];
-
-    const merchantApiOrigin =
-      process.env.MERCHANT_API_ORIGIN || "http://localhost:5100";
-
+  async redirects() {
     return [
       {
-        source: "/producer/:path*",
-        destination: `${merchantApiOrigin}/api/v1/merchants/:path*`,
+        source: "/merchant/user/:path*",
+        destination: "/user/:path*",
+        permanent: true,
       },
+      {
+        source: "/merchant/role/:path*",
+        destination: "/role/:path*",
+        permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    if (!adminApiOrigin) return [];
+    return [
+      { source: "/admin/:path*", destination: `${adminApiOrigin}/api/v1/admins/:path*` },
+      { source: "/producer/:path*", destination: `${adminApiOrigin}/api/v1/merchants/:path*` },
+      // master data โครงสร้างองค์กร (offices/divisions/positions/levels) อยู่ /api/v1 top-level
+      // ไม่เข้า 2 rule บน — passthrough ทั้ง /api ได้เพราะ src/app ไม่มี route ใต้ /api
+      { source: "/api/:path*", destination: `${adminApiOrigin}/api/:path*` },
     ];
   },
 };

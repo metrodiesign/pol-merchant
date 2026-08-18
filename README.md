@@ -1,197 +1,114 @@
 # POL Merchant
 
-เว็บพอร์ทัลสำหรับ merchant/producer ภายนอกที่ทำงานในบทบาทตัวแทนและนายหน้า
-พัฒนาด้วย Next.js 16 และ React 19
+Merchant portal แบบ single Next.js application ที่ repository root ใช้ Next.js 16.3.1,
+React 19.2.4, TypeScript, Tailwind CSS 4 และ Vitest 4.1.9
 
-สถานะปัจจุบันเป็น Merchant bootstrap: หน้า public ใช้งานได้ ส่วน protected shell
-เปิดดูได้เฉพาะ development เมื่อกำหนด `MERCHANT_SHELL_PREVIEW=true`
-จนกว่าจะเชื่อม Merchant authentication จริง
-
-## Runtime matrix
-
-| Environment | ระบบปฏิบัติการ | คำสั่ง | Port | API |
-|---|---|---|---:|---|
-| development | macOS หรือ Windows | `npm run dev` หรือ `npm run dev:clean` | 5300 | proxy `/producer/*` ไป `MERCHANT_API_ORIGIN` |
-| staging | Ubuntu 24.04 | `npm run start:staging` | 3000 | same-origin reverse proxy |
-| production | Ubuntu 24.04 | `npm run start:production` | 3000 | same-origin reverse proxy |
-| container | Ubuntu 24.04 | `docker compose up -d` | 3000 | same-origin reverse proxy |
-
-`start:staging` และ `start:production` ต้องรันหลัง `npm run build`
-
-## Prerequisites
-
-- Node.js 22.19.0
-- npm 11.12.1
-- Docker เมื่อทดสอบหรือ deploy container
-
-ตรวจเวอร์ชัน:
-
-```bash
-node --version
-npm --version
-```
-
-## เริ่มพัฒนาบน macOS
-
-```bash
-git clone https://github.com/metrodiesign/pol-merchant.git
-cd pol-merchant
-npm ci
-cp .env.example .env.local
-npm run dev:clean
-```
-
-เปิด `http://localhost:5300`
-
-## เริ่มพัฒนาบน Windows
-
-ใช้ PowerShell:
-
-```powershell
-git clone https://github.com/metrodiesign/pol-merchant.git
-Set-Location pol-merchant
-npm ci
-Copy-Item .env.example .env.local
-npm run dev:clean
-```
-
-เปิด `http://localhost:5300`
-
-## Environment variables
-
-ใช้เฉพาะ development:
-
-| Variable | Default | หน้าที่ |
-|---|---|---|
-| `MERCHANT_API_ORIGIN` | `http://localhost:5100` | ปลายทาง Merchant API สำหรับ rewrite `/producer/*` |
-| `MERCHANT_SHELL_PREVIEW` | `false` | เปิด protected shell เมื่อเป็น `true` และ `NODE_ENV=development` |
-
-ข้อกำหนด:
-
-- ใช้ `.env.example` เป็น template ค่าปลอม
-- เก็บค่าจริงใน `.env.local` หรือ secret manager
-- ห้าม commit `.env`, `.env.*`, token, password หรือ connection string
-- staging และ production ห้ามใช้ development rewrite หรือ preview flag
-
-## คำสั่งหลัก
-
-| คำสั่ง | ผลลัพธ์ |
-|---|---|
-| `npm ci` | ติดตั้ง dependency ตาม lock file |
-| `npm run dev` | development server ที่ port 5300 |
-| `npm run dev:clean` | ลบ Next.js cache แล้วเปิด development server ที่ port 5300 |
-| `npm run build` | สร้าง production standalone artifact |
-| `npm run start:staging` | staging runtime ที่ `0.0.0.0:3000` |
-| `npm run start:production` | production runtime ที่ `0.0.0.0:3000` |
-| `npm test` | รัน Vitest |
-| `npm run lint` | รัน ESLint |
-| `npx tsc --noEmit` | ตรวจ TypeScript |
-| `npm run audit:production` | บังคับ production dependency audit policy |
-
-## Route surface
-
-Public:
-
-- `/` redirect ไป `/login`
-- `/login`
-- `/register`
-- `/login-error`
-- `/api/health` ตอบ `{"status":"ok"}`
-
-Protected Merchant preview:
-
-- `/dashboard`
-- `/policy/*`
-- `/checkout/*`
-- `/order/*`
-- `/transaction/*`
-- `/merchant/user/*`
-- `/merchant/role/*`
-
-เมื่อ preview ปิด protected route ตอบ 404 เพื่อไม่เปิด shell ที่ยังไม่มี
-Merchant authentication จริง
-
-## API contract
-
-Development ใช้ Next.js rewrite:
+## โครงสร้าง
 
 ```text
-/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
+public/                 static assets
+src/
+  app/                  App Router routes และ layouts
+  components/           UI แยกตาม feature
+  hooks/                shared React hooks
+  lib/                  API adapters, domain logic, mocks, utilities
+  types/                shared TypeScript types
+docs/                   คู่มือปัจจุบัน
+scripts/                audit, spec trace, automation, cost tools
+.ai/                    canonical agent/workflow rules
+.claude/specs/          feature specs และ Evidence
 ```
 
-staging และ production ไม่มี rewrite นี้ ต้องให้ reverse proxy ภายนอก route
-`/producer/*` ไป Merchant API แบบ same-origin
+Application config อยู่ root: `.env.example`, `components.json`, `next.config.ts`,
+`postcss.config.mjs`, `tsconfig.json`, `vitest.config.ts`, `package.json` และ
+`package-lock.json`. Repository นี้ไม่มี npm workspace และไม่มี `apps/` หรือ `packages/`.
 
-## Docker
+## เริ่มใช้งาน
 
-Build และ smoke test:
+ต้องใช้ Node.js 22.19.0 และ npm 11.12.1
 
 ```bash
-docker build --tag pol-merchant:local .
-docker run --rm --detach --name pol-merchant-local --publish 3000:3000 pol-merchant:local
-curl --fail http://127.0.0.1:3000/api/health
-docker stop pol-merchant-local
+npm install --global npm@11.12.1
+npm ci
+cp .env.example .env.local
+npm run dev
 ```
 
-Compose:
+เปิด `https://localhost:3002`. Development server ใช้ self-signed HTTPS; browser อาจขอให้
+ยืนยัน certificate ครั้งแรก. ดูขั้นตอน Windows, Docker และ troubleshooting ที่
+[`docs/dev-setup.md`](docs/dev-setup.md).
 
-```bash
-docker compose up --build --detach
-curl --fail http://127.0.0.1:3000/api/health
-docker compose down
-```
+## Environment
 
-Container ใช้ Node.js 22.19.0, npm 11.12.1, user ที่ไม่ใช่ root และ port 3000
+| ตัวแปร | ใช้เมื่อ | ค่าเริ่มต้น |
+|---|---|---|
+| `ADMIN_API_ORIGIN` | Development proxy สำหรับ `/admin/*`, `/producer/*`, `/api/*` | ไม่มี rewrite |
+| `NEXT_PUBLIC_API_ORIGIN` | Client API adapters; ค่านี้เปิดเผยต่อ browser | same-origin |
 
-## Deploy
+เก็บค่าจริงใน `.env.local` เท่านั้น. Commit ได้เฉพาะ `.env.example` ที่ไม่มี secret.
 
-ใช้ image digest เดียวกันทั้ง staging และ production:
+## Route สำคัญ
 
-1. Build, test และ push image หนึ่งครั้ง
-2. บันทึก digest ใหม่และ digest ก่อนหน้า
-3. Deploy digest ใหม่เข้า staging บน Ubuntu 24.04
-4. ตรวจ `/api/health`, public routes และ protected-route gate
-5. Promote digest เดิมเข้า production เมื่อ staging ผ่าน
-6. Tag release และอัปเดต changelog
+- `/` ตอบ `307` ไป `/dashboard`
+- `/register` เป็น public route
+- `/user/{list,new,read,edit}` และ `/role/{list,create,read,edit}` เป็น canonical Merchant routes
+- `/merchant/user/*` และ `/merchant/role/*` ตอบ `308` ไป canonical route และรักษา query string
+- `/admin/user/*` และ `/admin/role/*` ยังคงเป็น Admin routes
+- `/control/*`, `/organization/*`, `/order/*`, `/transaction/*`, `/policy/*` และ `/checkout/*`
+  ใช้โครง App Router เดิม
 
-ตัวอย่าง deploy image ที่ build แล้ว:
+Domain identifiers เช่น `Merchant`, `MerchantCode`, `MerchantUser*` และ backend contract
+`/producer/*` ยังใช้ชื่อเดิม; สิ่งที่ยุบคือ directory/import namespace เท่านั้น.
 
-```bash
-POL_MERCHANT_IMAGE=registry.example.com/pol-merchant@sha256:REPLACE_WITH_DIGEST docker compose pull
-POL_MERCHANT_IMAGE=registry.example.com/pol-merchant@sha256:REPLACE_WITH_DIGEST docker compose up --detach --no-build
-curl --fail http://127.0.0.1:3000/api/health
-```
+## คำสั่ง
 
-ห้าม build ใหม่ระหว่าง promote จาก staging ไป production
+| คำสั่ง | ผล |
+|---|---|
+| `npm run dev` | HTTPS development server ที่ port 3002 |
+| `npm run dev:clean` | ล้าง generated Next/TypeScript cache แล้วเปิด dev server |
+| `npm test` | รัน `src/**/*.test.ts` และ `scripts/**/*.test.mjs` |
+| `npm run lint` | รัน ESLint ทั้ง repository ตาม ignore config |
+| `npm run typecheck` | รัน TypeScript แบบ no-emit |
+| `npm run build` | สร้าง production standalone build |
+| `npm start` | รัน production server ที่ port 3002 |
+| `npm run audit:production` | ตรวจ production dependency vulnerabilities |
 
-### Rollback
-
-1. ตั้ง `POL_MERCHANT_IMAGE` กลับเป็น digest ก่อนหน้า
-2. รัน `docker compose up --detach --no-build`
-3. ตรวจ health และ public routes
-4. บันทึกเหตุผล rollback ใน release note
-
-production ต้องผ่าน staging ก่อนเสมอ และไม่ deploy ศุกร์เย็นหรือก่อนวันหยุดยาว
-ยกเว้น hotfix ฉุกเฉินที่มีผู้อนุมัติ
-
-## Quality gate
-
-ก่อนเปิด PR:
+ก่อนส่งมอบให้รันตามลำดับ:
 
 ```bash
 npm run audit:production
 npm test
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm run build
 ```
 
-CI รัน guard/spec trace บน Ubuntu และ application matrix บน macOS, Windows,
-Ubuntu 24.04 ทุก PR เข้า `develop` หรือ `main`
+## Docker
 
-รายละเอียดเพิ่ม:
+```bash
+docker compose build
+docker compose up
+```
 
-- [Development setup](docs/dev-setup.md)
-- [Production dependency audit](docs/dependency-audit.md)
-- [Project context](.ai/shared/PROJECT_CONTEXT.md)
-- [Architecture](.ai/shared/ARCHITECTURE.md)
+Image ใช้ Node 22.19.0, npm 11.12.1, Next standalone output, non-root UID 1001 และ port 3002.
+Healthcheck ต้องเห็น `307 Location: /dashboard` จาก `/`.
+
+## เอกสาร
+
+- [`docs/README.md`](docs/README.md) — index คู่มือปัจจุบันและ historical records
+- [`.ai/shared/PROJECT_CONTEXT.md`](.ai/shared/PROJECT_CONTEXT.md) — product context
+- [`.ai/shared/ARCHITECTURE.md`](.ai/shared/ARCHITECTURE.md) — canonical architecture
+- [`.ai/shared/stack/nextjs.md`](.ai/shared/stack/nextjs.md) — Next.js conventions
+- [`claude-code-spec-driven-workflow.md`](claude-code-spec-driven-workflow.md) — workflow entry guide
+
+## Workflow
+
+งาน non-trivial ใช้ spec-first: requirements -> design -> tasks -> implementation.
+`/spec-quick` ข้าม approval pauses ได้เมื่อ scope เล็กและชัด. เปิด git hooks ต่อ clone ครั้งเดียว:
+
+```bash
+./.ai/bin/install.sh
+git config --get core.hooksPath
+```
+
+ห้าม push ตรง `main`/`develop`, ห้าม force push, และไม่ merge เมื่อ CI แดง.

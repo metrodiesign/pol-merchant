@@ -7,10 +7,12 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { SidebarNav } from "./sidebar-nav";
 import { MinimalsTopbar } from "./minimals-topbar";
 import { MinimalsHorizontalNav } from "./minimals-horizontal-nav";
-import { Logo } from "./logo";
+import { Logo } from "@/components/layout/logo";
 import { minimalsNavConfig } from "./minimals-nav-config";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { AuthGuard } from "@/components/auth/auth-guard";
 
 /**
  * Shell for the /minimals (minimals clone) route group.
@@ -21,7 +23,14 @@ import { useSettings } from "@/components/providers/settings-provider";
  *  - Uses a separate localStorage key so collapse state is independent.
  */
 export function MinimalsLayout({ children }: { children: React.ReactNode }) {
-  return <MinimalsShell>{children}</MinimalsShell>;
+  // BFF auth gate — ทุก protected route group route ผ่าน MinimalsLayout; /login + /logout ไม่ผ่าน -> public.
+  return (
+    <AuthProvider>
+      <AuthGuard>
+        <MinimalsShell>{children}</MinimalsShell>
+      </AuthGuard>
+    </AuthProvider>
+  );
 }
 
 function MinimalsShell({ children }: { children: React.ReactNode }) {

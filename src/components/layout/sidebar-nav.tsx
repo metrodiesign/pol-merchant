@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/popover";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { Logo } from "./logo";
+import { Logo } from "@/components/layout/logo";
 
 function SidebarLogo({
   collapsed,
@@ -26,7 +26,6 @@ function SidebarLogo({
   return (
     <Link
       href="/"
-      aria-label="POL Merchant"
       className={cn("inline-flex items-center", collapsed ? "px-0" : "px-1")}
     >
       {collapsed ? (

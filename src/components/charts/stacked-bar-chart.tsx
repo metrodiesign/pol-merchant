@@ -42,7 +42,7 @@ export function StackedBarChart({
   });
 
   return (
-    <div className="overflow-x-auto" style={{ width: "100%", height }}>
+    <div style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 600, height }}>
         <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: valueFormatter ? 8 : -16 }} barGap={4}>
           <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
