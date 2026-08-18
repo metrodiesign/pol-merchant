@@ -7,10 +7,10 @@ import { useSearchParams } from "next/navigation";
 import { CircleCheck } from "lucide-react";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
 import { Fieldset, Field, Label, Description } from "@/components/shared/fieldset";
-import { MerchantUserEditFormCard } from "@/components/merchant/user/edit-form-card";
+import { MerchantUserEditFormCard } from "@/components/user/edit-form-card";
 import { Logo } from "@/components/layout/logo";
-import { buildRegisterFormData, merchantUserRegister } from "@/lib/api/merchant/user";
-import type { MerchantUserFormData } from "@/types/merchant/user";
+import { buildRegisterFormData, merchantUserRegister } from "@/lib/api/user";
+import type { MerchantUserFormData } from "@/types/user";
 
 // ponytail: shell-free public page — no layout.tsx in this folder, inherits only root
 // layout (mirror /login, REQ-11.2). Single client file; metadata title skipped (mock).

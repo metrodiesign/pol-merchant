@@ -68,11 +68,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "POL Merchant",
-    template: "%s | POL Merchant",
-  },
-  description: "ระบบ POL Merchant สำหรับตัวแทนและนายหน้าภายนอก",
+  title: "Dashboard - Minimal UI",
+  description: "Minimal UI dashboard clone",
 };
 
 export default function RootLayout({
@@ -82,7 +79,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="th"
+      lang="en"
       className={`${publicSans.variable} ${barlow.variable} ${inter.variable} ${dmSans.variable} ${nunitoSans.variable} ${notoSansThai.variable} ${ibmPlexMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >

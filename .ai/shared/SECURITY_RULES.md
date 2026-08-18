@@ -110,15 +110,11 @@ fork or weaken these checks per harness.
 - **Enforced by:** `.github/workflows/ci.yml` as a required check for ALL contributors
   (Tier 1), triggered on both `pull_request` and `push` to `main` AND `develop`.
   Server-side branch protection is the gate that cannot be skipped locally.
-- **Checks CI actually runs** (so the doc matches the workflow): the guard-regression
-  suite (every `.claude/hooks/tests/*.test.sh`, so the single check engine cannot be
-  weakened silently), the full-tree secret scan (`.ai/bin/check-secrets.sh --all` with
-  `SECRET_GUARD_SKIP` force-cleared), and spec-trace REQ coverage (Python 3.12 pinned).
-  A dependency vulnerability audit is REQUIRED in CI for any project that ships a package
-  manifest (see Dependencies below); this framework repo ships no runtime deps, so its CI
-  runs the guard-suite + secret scan + spec-trace instead of an audit step. There is
-  **no lint script** in this project, so CI runs no lint step — lint is not-yet-wired,
-  not a silent failure.
+- **Checks CI actually runs** (so the doc matches the workflow): guard-regression suite,
+  full-tree secret scan (`.ai/bin/check-secrets.sh --all` with `SECRET_GUARD_SKIP`
+  force-cleared), spec-trace REQ coverage (Python 3.12), clean root `npm ci`, production
+  dependency audit, Vitest, ESLint, TypeScript, focused/skipped-test scan, Next production
+  build, Linux HTTP smoke, and macOS/Windows HTTPS development smoke.
 
 ### Deploy / release
 
@@ -128,8 +124,7 @@ fork or weaken these checks per harness.
   an emergency hotfix.
 - Every release is tagged with a version + a changelog entry.
 - **Enforced by:** procedural discipline (Tier 3) + release-pipeline checks where they
-  exist. (This project ships a static frontend with no real backend; treat these as the
-  standard to follow if a deploy pipeline is added.)
+  exist. The repository builds a Next.js standalone server; backend services remain external.
 
 ### Dependencies
 
@@ -142,9 +137,10 @@ fork or weaken these checks per harness.
   REQUIRED in CI for any project that ships a package manifest. When auditing, separate a
   dev-only chain from prod-core before acting — never force-fix a core dependency into a
   breaking downgrade.
-- **Enforced by:** for a project that ships a package manifest, a blocking dependency
-  audit in CI (Tier 1); this framework repo ships no runtime deps, so its CI has no audit
-  step. Lockfile presence + review approval for new dependencies still apply (Tier 3, see
+- **Enforced by:** `npm run audit:production` in CI (Tier 1), using the root manifest and
+  lockfile. Production high/critical findings block; dev-only advisories are reviewed
+  separately and never auto-fixed with a forced breaking downgrade. Lockfile presence +
+  review approval for new dependencies still apply (Tier 3, see
   [REVIEW_PROTOCOL.md](REVIEW_PROTOCOL.md)).
 
 ### Branch / push discipline

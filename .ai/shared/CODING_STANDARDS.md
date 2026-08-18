@@ -3,8 +3,8 @@
 
 # Technology Stack
 
-> Stack-neutral. This framework does not assume a language, runtime, UI framework, or test
-> runner. The rules below are universal; concrete stack picks come from the project itself.
+> Shared rules remain stack-neutral. This repository's concrete Next.js choices live in
+> `stack/nextjs.md` and root configuration; both layers apply.
 
 ## Languages & Runtimes
 
@@ -20,7 +20,7 @@
   การ approve PR ที่บันทึกการเพิ่มนั้น = การอนุมัติ
 - stack-specific guidance (UI framework, styling system, test-runner idioms) อยู่ใน profile
   เสริมแบบ optional ใต้ `.ai/shared/stack/` — เพิ่มไฟล์ของ stack ตัวเองเมื่อต้องการ;
-  framework ไม่ bundle profile ใดมาให้โดย default
+  active profile ของ repository นี้อยู่ที่ `.ai/shared/stack/nextjs.md`
 
 ## Data Layer
 

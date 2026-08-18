@@ -83,8 +83,8 @@ compound command, the whole command is killed — re-check which parts already r
 ### Command (`.claude/commands/pane-loop.md`)
 
 The `pane-loop` orchestrator drives `/spec-implement → /spec-retro → /clear`
-across iTerm panes. Default is all-in-one (every task in one session) for coupled
-features; split per pane only for independent work or to isolate accuracy.
+across iTerm panes. No task args means `Batch:`-based grouping; `all-in-one` is
+explicit, while manual `1 2+3 4` groups override tags.
 
 ## How you produce work
 
@@ -102,11 +102,10 @@ features; split per pane only for independent work or to isolate accuracy.
 ## Enforcement floor (shared with every agent)
 
 Even with Claude's harness hooks, the durable gates are Tier 1: committed git
-hooks (`.githooks/` via `core.hooksPath`) and CI. They catch secrets, branch/
-force-push violations, typecheck/test failures, and spec REQ-coverage on every
-commit/push (git hooks) and every develop-targeted PR (CI, per `ci.yml` `branches:
-[develop]`) — for every agent and every human. Treat git + CI as the real floor;
-the Claude hooks are an early, in-session convenience on top of it.
+hooks (`.githooks/` via `core.hooksPath`) and CI. Git hooks catch staged secrets,
+task Evidence, protected-branch pushes, and non-fast-forward pushes. CI runs the
+full guard/spec/application gate for `main` and `develop` — for every agent and
+human. Treat git + CI as the real floor; Claude hooks provide earlier feedback.
 
 ## Capabilities and limitations
 

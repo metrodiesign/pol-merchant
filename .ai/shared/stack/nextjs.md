@@ -1,192 +1,112 @@
-# Next.js stack
+# Next.js Profile
 
-Conventions สำหรับ POL Merchant application
+Conventions สำหรับ root POL Merchant application.
 
 ## Versions
 
-| Tool | Version |
-|---|---:|
-| Node.js | 22.19.0 |
-| npm | 11.12.1 |
-| Next.js | 16.3.0 |
+| Tool | Version/range source |
+|---|---|
+| Node.js | `package.json#engines.node` = 22.19.0 |
+| npm | `packageManager` = 11.12.1 |
+| Next.js | 16.3.1 |
 | React / React DOM | 19.2.4 |
-| TypeScript | 5.x |
-| Tailwind CSS | 4.x |
-| Vitest | 4.1.9 |
-| sharp | 0.35.3 |
+| TypeScript | `^5` |
+| Tailwind CSS | `^4` |
+| Vitest | `^4.1.9` |
 
-`package-lock.json` เป็น source of truth ใช้ `npm ci` ห้ามใช้ floating version
-สำหรับ production dependency
+Installed Next docs ที่ `node_modules/next/dist/docs/` เป็น authority ก่อนแก้ route, config,
+runtime หรือ build behavior.
 
-## App Router
-
-- ใช้ `src/app`
-- `page.tsx` เป็น route entry
-- `layout.tsx` เป็น shared route boundary
-- `route.ts` ใช้สำหรับ HTTP endpoint เช่น `/api/health`
-- Server Component เป็นค่าเริ่มต้น
-- ใช้ `"use client"` เฉพาะเมื่อจำเป็น
-
-Root route redirect ไป `/login`
-
-Public surface:
+## Project layout
 
 ```text
-/login
-/register
-/login-error
-/api/health
+src/app
+src/components
+src/hooks
+src/lib
+src/types
+public
 ```
 
-Protected surface:
+Config ทั้งหมดอยู่ root. Internal imports ใช้ `@/`. ห้ามใช้ workspace imports หรือเพิ่ม
+monorepo-only `outputFileTracingRoot` / `transpilePackages`.
+
+## App Router rules
+
+- Server Component เป็น default
+- ใช้ `"use client"` เฉพาะ component ที่ต้องใช้ state, effect, event หรือ browser API
+- Route `page.tsx` ประกอบ feature view; shared logic อยู่ `src/lib`
+- Layout shared shell อยู่ระดับ route family ที่แคบที่สุด
+- ใช้ `next/navigation` สำหรับ `redirect`/router และ `next/link` สำหรับ internal links
+- Route/config changes ต้องอัปเดต navigation, breadcrumbs, tests และ docs พร้อมกัน
+
+Canonical Merchant paths คือ `/user/*` และ `/role/*`. Legacy `/merchant/*` อยู่ได้เฉพาะ
+redirect source ใน `next.config.ts`.
+
+## Imports and modules
+
+- `@/components/ui/*`: primitives
+- `@/components/shared/*`: reusable application UI
+- `@/components/<feature>/*`: feature views
+- `@/lib/api/*`: network adapters
+- `@/lib/<feature>/*`: pure/domain logic
+- `@/types/*`: domain/API shapes
+- `@/lib/mock/*`: typed mock data
+
+Reuse `@/lib/utils#cn`; ห้ามสร้าง utility สำเนา.
+
+## Styling
+
+Tailwind entry คือ `src/app/globals.css` ผ่าน root `postcss.config.mjs`.
+shadcn path aliases อยู่ root `components.json`. ไม่มี `@source` ไป package ภายนอก.
+
+Responsive UI acceptance ใช้ exact viewport/client width 375, 768, 1440 และต้องไม่มี
+horizontal overflow หรือ console error.
+
+## API and auth
+
+Development env อยู่ root `.env.local`:
 
 ```text
-/dashboard
-/policy/*
-/checkout/*
-/order/*
-/transaction/*
-/merchant/user/*
-/merchant/role/*
+ADMIN_API_ORIGIN=https://localhost:5001
+NEXT_PUBLIC_API_ORIGIN=https://localhost:5001
 ```
 
-## Protected shell
+`NEXT_PUBLIC_*` ไม่ใช่ secret. API adapters ใช้ `credentials: 'include'`; auth token อยู่ใน
+httpOnly cookie. Mutation แนบ CSRF header. Production ใช้ same-origin เป็น default.
 
-protected layouts เรียก `MerchantShellGate` จุดเดียว
-
-Gate เปิดเมื่อ:
+Rewrites:
 
 ```text
-NODE_ENV=development
-MERCHANT_SHELL_PREVIEW=true
+/admin/:path*    -> ADMIN_API_ORIGIN/api/v1/admins/:path*
+/producer/:path* -> ADMIN_API_ORIGIN/api/v1/merchants/:path*
+/api/:path*      -> ADMIN_API_ORIGIN/api/:path*
 ```
 
-นอกเงื่อนไขตอบ 404 ห้าม duplicate environment check ในแต่ละ page
+## Testing
 
-preview เป็นเครื่องมือตรวจ UI ไม่ใช่ authentication หรือ authorization
-เมื่อเพิ่ม Merchant auth จริง ให้เปลี่ยน shared gate ตาม spec ใหม่
+Root `vitest.config.ts` map `@ -> src` และรัน source/script tests ใน command เดียว.
+Pure logic test co-locate เช่น `src/lib/user/validation.test.ts`. อย่าทดสอบ CSS class เป็น
+behavior proxy.
 
-## Metadata and language
-
-`src/app/layout.tsx` ต้อง:
-
-- ใช้ `lang="th"`
-- ตั้ง title และ description เป็น POL Merchant
-- โหลด Thai font coverage
-- ไม่แสดง product identity จากระบบต้นทาง
-
-## Components
-
-ลำดับ reuse:
-
-1. domain component ใน `src/components/<domain>`
-2. shared component ใน `src/components/shared`
-3. primitive ใน `src/components/ui`
-4. native HTML/CSS
-5. dependency ที่ติดตั้งอยู่แล้ว
-
-ไม่สร้าง wrapper, hook หรือ abstraction เมื่อมี consumer เดียวและไม่ได้ลดความซับซ้อน
-
-## Styling and responsive behavior
-
-- ใช้ Tailwind CSS 4 และ global tokens ใน `src/app/globals.css`
-- mobile-first
-- breakpoint ตาม utilities ที่มีอยู่
-- ห้าม horizontal overflow ที่ viewport 375, 768 และ 1440
-- keyboard focus ต้องมองเห็น
-- mobile navigation ต้องเปิด/ปิดได้ด้วย keyboard
-- desktop navigation รองรับ sidebar/horizontal variant ตาม settings
-
-## Data and state
-
-- server data เริ่มจาก Server Component เมื่อทำได้
-- interaction state เก็บใกล้ component ที่ใช้
-- shared setting ใช้ provider เดิม
-- pure transform/validation อยู่ `src/lib`
-- ห้ามสร้าง global store ถ้า local state หรือ URL state พอ
-- mock data ที่เหลือจาก bootstrap ห้ามถูกเข้าใจว่าเป็น production integration
-
-## Merchant API
-
-API client อยู่:
-
-```text
-src/lib/api/merchant/
-```
-
-Development:
-
-```text
-/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
-```
-
-rewrite ใน `next.config.ts` คืนค่า empty list เมื่อไม่ใช่ development
-
-staging/production:
-
-- client ใช้ relative URL `/producer/*`
-- reverse proxy ภายนอกเลือก backend origin
-- ห้ามใช้ `NEXT_PUBLIC_*` เก็บ credential
-- ห้าม hardcode token, password หรือ connection string
-
-## Runtime commands
-
-| Environment | Command | Port |
-|---|---|---:|
-| development | `npm run dev` | 5300 |
-| development clean | `npm run dev:clean` | 5300 |
-| staging | `npm run start:staging` | 3000 |
-| production | `npm run start:production` | 3000 |
-
-`start:staging` และ `start:production` ต้องใช้ผลจาก `npm run build`
-
-`next.config.ts` กำหนด `output: "standalone"` สำหรับ Docker runtime
-
-## Docker
-
-- build ด้วย Node.js 22.19.0 และ npm 11.12.1
-- multi-stage build
-- runner เป็น non-root
-- listen `0.0.0.0:3000`
-- health check `GET /api/health`
-- deployed image pin ด้วย immutable digest
-
-artifact เดียวต้องผ่าน staging ก่อน promote เข้า production
-
-## Tests
-
-วาง unit test ข้าง logic:
-
-```text
-src/lib/<domain>/<name>.test.ts
-scripts/<name>.test.mjs
-```
-
-ขั้นต่ำก่อน handoff:
+Full gate:
 
 ```bash
 npm run audit:production
 npm test
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm run build
 ```
 
-UI-facing change ต้องตรวจ production runtime ด้วย browser:
+ก่อน typecheck/build หลัง route move ให้ใช้ `npm run dev:clean` หรือเก็บ stale `.next` ออก.
 
-- viewport 375, 768, 1440
-- public routes
-- protected preview ใน development
-- sidebar/horizontal/mobile navigation
-- keyboard focus และ interaction
-- hydration/runtime console error
+## Production
 
-## Security and dependency policy
-
-- production audit ต้องมี Critical = 0
-- fixable High block จนแก้
-- no-fix High ผ่านได้เมื่อบันทึก advisory, path, owner และ review date
-- ห้าม suppress advisory เงียบ
-- security remediation ที่ทำให้ source baseline ต่างต้องบันทึกใน spec handoff
-
-รายละเอียด policy: `docs/dependency-audit.md`
+- `output: 'standalone'`
+- root artifact `.next/standalone/server.js`
+- `npm start` port 3002
+- Docker run `node server.js` เป็น UID 1001
+- `GET /` -> 307 `/dashboard`
+- `GET /register` -> 200
+- legacy Merchant redirects -> 308 พร้อม query string

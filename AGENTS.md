@@ -6,8 +6,8 @@ the same `.ai/shared/*` read order — Claude does not auto-load this file). Rea
 
 ## What this repo is
 
-A spec-driven development framework. One line of truth, full context here:
-`.ai/shared/PROJECT_CONTEXT.md`.
+POL Merchant is a single root Next.js application operated with a spec-driven
+development framework. Product and runtime truth lives in `.ai/shared/PROJECT_CONTEXT.md`.
 
 ## Read order (do this before you act)
 
@@ -41,12 +41,12 @@ bodies route to the same single source — do not improvise the phase structure.
 
 Two tiers apply to every agent and human, regardless of harness:
 
-- **Git hooks** — enable once per clone: `git config core.hooksPath .githooks`
+- **Git hooks** — enable once per clone: `./.ai/bin/install.sh`
   (`pre-commit` runs the secret scan + Evidence check; `pre-push` blocks direct
   pushes to `main`/`develop` and force pushes).
-- **CI** — `.github/workflows/ci.yml` runs typecheck, tests, a full-tree secret scan,
-  and spec-trace (every REQ must be covered) on every PR targeting `develop` (and pushes
-  to `develop`). A failing check blocks merge.
+- **CI** — `.github/workflows/ci.yml` runs guard tests, full-tree secret scan,
+  spec-trace, production audit, tests, lint, typecheck, build, and runtime smoke checks
+  on `main`/`develop` PRs and pushes. A failing check blocks merge.
 
 If your harness lacks a pre-tool hook (e.g. Pi), run the checks yourself before any
 risky bash: `.ai/bin/check-destructive.sh '<cmd>'` and `.ai/bin/check-bypass.sh '<cmd>'`

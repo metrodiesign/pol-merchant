@@ -15,14 +15,14 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# ---- builder: build the app ----
+# ---- builder: build Merchant ----
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app ./
 COPY . .
 
-# ไม่กำหนด MERCHANT_API_ORIGIN หรือ MERCHANT_SHELL_PREVIEW ตอน build/runtime:
-# deployed environments ใช้ same-origin reverse proxy และปิด protected preview เสมอ.
+# ไม่กำหนด ADMIN_API_ORIGIN ตอน build/runtime: production ใช้ same-origin reverse proxy
+# และ source next.config.ts ไม่สร้าง rewrite เมื่อ variable ไม่มีค่า
 ENV NODE_ENV=production
 RUN npm run build
 
@@ -31,25 +31,21 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=3002
 ENV HOSTNAME=0.0.0.0
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-
-# permission ก่อน copy standalone — ให้ prerender/ISR cache เขียนได้ตอน runtime
-RUN mkdir .next && chown nextjs:nodejs .next
-
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://127.0.0.1:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3002,path:'/'},r=>{const ok=r.statusCode===307&&r.headers.location==='/dashboard';r.resume();r.on('end',()=>process.exit(ok?0:1))}).on('error',()=>process.exit(1))"
 
 CMD ["node", "server.js"]

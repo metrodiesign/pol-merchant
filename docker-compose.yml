@@ -7,8 +7,8 @@ services:
       context: .
     environment:
       NODE_ENV: production
-      PORT: "3000"
+      PORT: "3002"
       HOSTNAME: 0.0.0.0
     ports:
-      - "3000:3000"
+      - "3002:3002"
     restart: unless-stopped

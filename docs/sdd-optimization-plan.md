@@ -1,5 +1,8 @@
 # แผน optimize spec-driven development (อ้างอิง Kiro docs)
 
+> Status: archived historical plan. ไม่ใช่ current instruction; ดู `docs/README.md` และ
+> `.ai/shared/` สำหรับ workflow ปัจจุบัน.
+
 > ที่มา: workflow `kiro-sdd-optimizer` (45 agents, 2026-06-12) — fetch Kiro docs 16/16 หน้า
 > (specs 8, hooks 6, steering 1, skills 1) + audit setup ปัจจุบัน 5 ด้าน → ข้อเสนอ 20 ข้อ
 > ทุกข้อผ่าน adversarial verify กับไฟล์จริง (apply ตรงได้ 3, ต้องปรับแล้วใช้ได้ 17, reject 0)

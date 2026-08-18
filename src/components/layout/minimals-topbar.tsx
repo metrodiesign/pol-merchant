@@ -7,6 +7,7 @@ import { LanguagePopover } from "./language-popover";
 import { NotificationsDrawer } from "./notifications-drawer";
 import { ContactsPopover } from "./contacts-popover";
 import { SettingsDrawer } from "./settings-drawer";
+import { AccountDrawer } from "./account-drawer";
 import { cn } from "@/lib/utils";
 
 interface MinimalsTopbarProps {
@@ -50,6 +51,7 @@ export function MinimalsTopbar({ onMenuClick }: MinimalsTopbarProps) {
         <NotificationsDrawer variant="grey" />
         <ContactsPopover variant="grey" />
         <SettingsDrawer variant="grey" />
+        <AccountDrawer variant="grey" />
       </div>
     </header>
   );

@@ -1,202 +1,161 @@
 # Architecture
 
-## Overview
+> Canonical architecture ของ POL Merchant หลัง root application normalization.
 
-Repository มีสองชั้น:
-
-1. Agent operating layer ใน `.ai/`, `.agents/`, `.claude/` และ `.githooks/`
-2. POL Merchant application ใน `src/` พร้อม runtime/deploy files ที่ root
-
-Spec เป็นตัวกำหนดการเปลี่ยน application ทุกงานต้องไหล
-requirements -> design -> tasks -> implementation -> evidence
-
-## Repository layout
+## Topology
 
 ```text
-.ai/
-  shared/                 shared project rules และ source of truth
-  agents/                 harness adapters
-  roles/                  role contracts
-  workflows/              spec-driven workflows
-  bin/                    guard และ trace scripts
-.agents/skills/           spec-* skills
-.claude/specs/            feature artifacts และ handoff
-.github/workflows/        CI
-configs/                  machine-readable policies
-docs/                     operating documentation
-public/                   static assets
-scripts/                  local checks และ runtime helpers
-src/
-  app/                    Next.js App Router
-  components/             UI by domain
-  lib/                    domain, API และ shared logic
-Dockerfile
-docker-compose.yml
-next.config.ts
+.
+├── public/                       static assets
+├── src/
+│   ├── app/                      Next.js App Router
+│   ├── components/               feature, layout, shared และ primitive UI
+│   ├── hooks/                    shared client hooks
+│   ├── lib/                      API adapters, domain logic, mocks, utilities
+│   └── types/                    shared domain/API types
+├── docs/                         current operating guides
+├── scripts/                      audit, spec trace, automation, cost tools
+├── .ai/                          shared agent/workflow canon
+├── .claude/specs/                feature specs และ Evidence
+├── package.json
+├── next.config.ts
+├── tsconfig.json
+└── vitest.config.ts
 ```
 
-## Application routes
+Application และ reusable code อยู่ root `src` ชุดเดียว. ไม่มี workspace/package boundary.
 
-Public routes:
-
-| Route | Responsibility |
-|---|---|
-| `/` | redirect ไป `/login` |
-| `/login` | Merchant sign-in entry |
-| `/register` | Merchant registration |
-| `/login-error` | public authentication error |
-| `/api/health` | runtime health response |
-
-Protected Merchant route groups:
-
-| Group | Responsibility |
-|---|---|
-| `/dashboard` | Merchant overview |
-| `/policy`, `/checkout` | policy และ checkout flow |
-| `/order` | order workflow |
-| `/transaction` | payment transaction views |
-| `/merchant/user` | Merchant user management |
-| `/merchant/role` | Merchant role and permission management |
-
-ทุก protected layout route ผ่าน `MerchantShellGate`
-
-`MerchantShellGate` render `MinimalsLayout` เฉพาะเมื่อ:
-
-```text
-NODE_ENV=development
-MERCHANT_SHELL_PREVIEW=true
-```
-
-กรณีอื่นตอบ 404 จนกว่า Merchant authentication จริงเข้ามาแทน gate
-
-## Component boundaries
+## Dependency direction
 
 ```text
 src/app
-  -> src/components/<domain>
-      -> src/components/shared และ src/components/ui
-  -> src/lib/<domain>
-      -> src/lib/api/merchant
+  -> src/components
+  -> src/hooks
+  -> src/lib
+  -> src/types
 ```
 
-กฎ dependency:
+กฎ:
 
-- route ประกอบ page/layout และเรียก domain component
-- domain component ไม่ import จาก route
-- shared UI ไม่ import domain feature
-- API client อยู่ `src/lib/api/merchant`
-- validation และ pure domain logic อยู่ `src/lib` และมี unit test ข้างไฟล์
-- ห้ามเพิ่ม public route ด้วยการนำ legacy component มา render โดยไม่มี spec
+- ใช้ alias `@/* -> src/*`
+- Route files ประกอบ view; business/validation logic อยู่ `src/lib`
+- Shared API/domain shapes อยู่ `src/types`
+- Reusable UI อยู่ `src/components/shared`; primitives อยู่ `src/components/ui`
+- Feature components import shared/lib/types ได้
+- `src/lib` ห้าม import route modules
+- ห้ามสร้าง `@pol/*` local package หรือ `merchant` directory namespace กลับมาเพื่อ reuse ภายใน app
 
-## Layout and navigation
+## App Router
 
-- `src/app/layout.tsx` กำหนด Thai locale, font และ Merchant metadata
-- `src/components/layout/minimals-layout.tsx` เป็น protected application shell
-- `src/components/layout/nav-config.ts` เป็น navigation source เดียว
-- desktop ใช้ sidebar หรือ horizontal navigation ตาม settings
-- mobile ใช้ drawer navigation
-- logo, title และ browser metadata ต้องเป็น POL Merchant
+Route families หลัก:
 
-## Server and client boundaries
+| Surface | Paths | Layout |
+|---|---|---|
+| Merchant users | `/user/list|new|read|edit` | `src/app/user/layout.tsx` -> `MinimalsLayout` |
+| Merchant roles | `/role/list|create|read|edit` | `src/app/role/layout.tsx` -> `MinimalsLayout` |
+| Admin | `/admin/user/*`, `/admin/role/*` | Admin layout เดิม |
+| Control | `/control/*` | control layout |
+| Organization | `/organization/*` | organization layout |
+| Commerce | `/order/*`, `/transaction/*`, `/policy/*`, `/checkout/*` | feature layouts |
+| Public/auth | `/register`, `/login`, `/logout`, `/login-error` | route-specific |
 
-- Server Component เป็นค่าเริ่มต้น
-- เพิ่ม `"use client"` เฉพาะ component ที่ใช้ state, event, browser API หรือ hook
-- environment gate ประเมินบน server
-- Client Component รับข้อมูล serializable ผ่าน props
-- ห้ามส่ง secret หรือ server-only environment variable ไป client
+`src/app/page.tsx` ใช้ Next `redirect('/dashboard')`, จึงได้ temporary `307`.
 
-## API topology
-
-Development rewrite ใน `next.config.ts`:
+`next.config.ts` เก็บ compatibility redirects:
 
 ```text
-/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
+/merchant/user/:path* -> /user/:path*   308
+/merchant/role/:path* -> /role/:path*   308
 ```
 
-rewrite ถูกสร้างเฉพาะ `NODE_ENV=development`
+## Merchant normalization boundary
 
-staging และ production ใช้ reverse proxy ภายนอก:
+Directory namespace ถูกยุบ แต่ domain vocabulary คงไว้:
+
+| Domain contract | Current path |
+|---|---|
+| Merchant master type | `src/types/merchant.ts` |
+| Merchant user type/form | `src/types/user.ts` |
+| Merchant role type | `src/types/role.ts` |
+| Merchant user validation | `src/lib/user/validation.ts` |
+| Merchant API adapter | `src/lib/api/user.ts` |
+| Merchant mocks | `src/lib/mock/merchant.ts`, `users.ts`, `role.ts` |
+| Merchant role permissions | `src/lib/role/permissions.ts` |
+
+Directory ชื่อ `merchant` ใต้ `src` ถือว่า architecture regression. Semantic file/type names ข้างบน
+ไม่ใช่ regression.
+
+## Authentication flow
 
 ```text
-browser -> same-origin /producer/* -> reverse proxy -> Merchant API
+protected layout
+  -> AuthProvider
+     -> getMe('/admin/me', credentials: include)
+        -> 200: AdminMe/authed
+        -> 401: anon
+  -> AuthGuard
+     -> loading: placeholder
+     -> anon: /login
+     -> authed: children
 ```
 
-frontend ไม่รู้ backend origin ใน deployed environment
+Mutation requests แนบ CSRF cookie value เป็น `X-CSRF-Token`. SSO login ใช้ full-page navigation
+ไป backend origin; frontend ไม่ถือ token.
 
-## Runtime
+Dev-only auth bypass ต้องผ่านทั้ง `NODE_ENV !== 'production'` และ
+`NEXT_PUBLIC_SKIP_AUTH === 'true'`; ห้ามใช้เป็น production contract.
 
-| Profile | Command | Host | Port |
-|---|---|---|---:|
-| development | `npm run dev` | localhost | 5300 |
-| development clean | `npm run dev:clean` | localhost | 5300 |
-| staging | `npm run start:staging` | `0.0.0.0` | 3000 |
-| production | `npm run start:production` | `0.0.0.0` | 3000 |
+## API boundary
 
-Runtime baseline:
-
-- Node.js 22.19.0
-- npm 11.12.1
-- Next.js standalone output
-- Ubuntu 24.04 สำหรับ staging/production host
-
-`scripts/clean-development.mjs` ใช้ Node.js stdlib ลบ cache จึงทำงานทั้ง macOS
-และ Windows โดยไม่เพิ่ม cross-platform dependency
-
-## Container and release
-
-Dockerfile ใช้ multi-stage build:
+`src/lib/api/admin/*` และ `src/lib/api/user.ts` เป็น client adapters. UI เรียก relative path
+เมื่อใช้ same-origin. `next.config.ts` ทำ development rewrite เฉพาะเมื่อ
+`ADMIN_API_ORIGIN` มีค่า:
 
 ```text
-base -> deps -> builder -> runner
+/admin/:path*    -> /api/v1/admins/:path*
+/producer/:path* -> /api/v1/merchants/:path*
+/api/:path*      -> /api/:path*
 ```
 
-runner:
+Backend `/producer/*` เป็น contract เดิม แม้ frontend route ใช้ `/user/*`.
 
-- copy เฉพาะ standalone output และ static assets
-- รันด้วย non-root user UID 1001
-- expose port 3000
-- health check `/api/health`
+## Styling and UI
 
-Compose รับ image ผ่าน `POL_MERCHANT_IMAGE` เพื่อ pin digest
+- Tailwind CSS 4 ผ่าน `src/app/globals.css`
+- shadcn aliases จาก root `components.json`
+- `cn` utility กลางที่ `src/lib/utils.ts`
+- Shared `AvatarUpload`, `Fieldset` และ `Logo` เป็น app-local components
+- Server Component เป็น default; ใส่ `"use client"` เมื่อใช้ state/effect/browser API เท่านั้น
+- Layout/interactive changes ต้องรักษา keyboard access, semantic markup และ responsive widths
 
-Release flow:
+## Test architecture
+
+Vitest config เดียวรัน:
 
 ```text
-build once -> staging same digest -> verify -> production same digest
+src/**/*.test.ts
+scripts/**/*.test.mjs
 ```
 
-Rollback เปลี่ยนกลับ digest ก่อนหน้า ไม่ rebuild
+Unit tests co-locate กับ pure logic/API adapter. Browser acceptance ใช้ production build และ
+วัด exact `clientWidth` ที่ 375, 768, 1440 เมื่อ spec กำหนด.
 
-## Verification architecture
+## Build and deployment
 
-- Vitest: domain/runtime contracts
-- ESLint: code quality
-- TypeScript: static type contract
-- Next.js build: production compilation
-- browser verification: responsive UI, navigation, interaction, hydration
-- dependency audit: `scripts/check-production-audit.mjs`
-- spec trace: ทุก REQ ต้องมี design และ task coverage
-- guard suites: destructive command, bypass, secret และ task-evidence enforcement
+`next.config.ts` ใช้ `output: 'standalone'`. Build artifact อยู่ root `.next`.
+Docker stages:
 
-CI แยก:
+1. `npm ci` จาก root manifest/lockfile
+2. `npm run build`
+3. copy `.next/standalone`, `public`, `.next/static`
+4. run `node server.js` เป็น UID 1001 ที่ port 3002
 
-- `verify`: guard, secret scan, spec trace
-- `application`: macOS/Windows development smoke และ Ubuntu 24.04 full gate
+Healthcheck ผ่านเมื่อ `GET /` ตอบ `307 Location: /dashboard`.
 
-## Naming and imports
+## Architecture guardrails
 
-- file/folder: `kebab-case`
-- React component/type: `PascalCase`
-- function/variable: `camelCase`
-- constant: `UPPER_SNAKE_CASE` เมื่อเป็นค่าคงที่จริง
-- ใช้ alias `@/*` สำหรับ import ภายใน `src`
-- export เฉพาะสิ่งที่มี consumer
-
-## Change rules
-
-- minimal diff ตาม approved spec
-- reuse component/helper ที่มีอยู่ก่อนสร้างใหม่
-- no dependency ใหม่ถ้า stdlib หรือ dependency เดิมพอ
-- test อยู่กับ non-trivial logic
-- source-baseline divergence ต้องมี requirement, evidence และ handoff
-- security remediation ทำได้เมื่อ audit policy บังคับและบันทึกเหตุผล
+- ห้ามเพิ่ม `apps/`, `packages/`, `tsconfig.base.json` หรือ npm workspaces โดยไม่มี architecture decision ใหม่
+- ห้ามเปลี่ยน auth/API contract ระหว่าง file-organization refactor
+- ห้ามลบ Admin-derived surface เพียงเพราะ Merchant route ถูก normalize
+- Dependency ใหม่ต้องผ่าน license/maintenance review และมีเหตุผล
+- Next.js change ต้องอ่าน installed docs ที่ `node_modules/next/dist/docs/` ก่อน

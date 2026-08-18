@@ -9,8 +9,8 @@
 #   ทางออก: "คน" รัน ./.ai/bin/install.sh นี้ครั้งเดียวต่อ clone — ตัว script (ไม่ใช่ agent บน
 #   CLI) เป็นผู้รัน git config ให้ จึงไม่ชน guard ของ command line. ปลอดภัยเพราะ idempotent +
 #   no-op นอก git repo.
-#   หมายเหตุ: framework เป็น stack-agnostic — ไม่มี package.json/npm install ให้แขวน `prepare`
-#   hook อีกต่อไป ดังนั้น script นี้คือทางเดียวในการ wire Tier-1 floor เข้า clone.
+#   หมายเหตุ: application มี root package.json แต่ไม่ผูก local Git config mutation กับ
+#   package lifecycle script. มนุษย์จึงรัน installer นี้หนึ่งครั้งต่อ clone.
 
 set -euo pipefail
 

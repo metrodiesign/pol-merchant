@@ -106,7 +106,6 @@ function Panel({
     </section>
   );
 }
-
 const fieldLabel = "mb-1.5 block text-xs font-semibold text-grey-700";
 
 export function OrderDetailView({ id, compact = false }: { id: string | undefined; compact?: boolean }) {
@@ -478,4 +477,3 @@ export function OrderDetailView({ id, compact = false }: { id: string | undefine
     </div>
   );
 }
-

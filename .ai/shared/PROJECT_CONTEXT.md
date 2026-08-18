@@ -1,112 +1,110 @@
-# Project context
+# Project Context
+
+> Canonical product context สำหรับทุก agent. Source/config ปัจจุบันอยู่ repository root.
 
 ## Product
 
-POL Merchant คือเว็บพอร์ทัลสำหรับตัวแทนและนายหน้าภายนอก ใช้จัดการงานขาย
-กรมธรรม์ คำสั่งซื้อ การชำระเงิน ผู้ใช้งาน และบทบาทในขอบเขต Merchant
+POL Merchant เป็น merchant operations portal ที่รวม Merchant, Admin, control-plane,
+organization, order, transaction, policy และ checkout surfaces ใน Next.js application เดียว.
 
-ผู้ใช้หลัก:
+Repository นี้พัฒนาและ deploy เป็นอิสระ. ไม่ใช้ parity, sync หรือ exact-mirror contract กับ
+repository อื่น.
 
-- ตัวแทนและนายหน้าที่สมัครเข้าใช้งาน
-- ผู้ดูแล Merchant organization
-- ทีมพัฒนาและปฏิบัติการที่ deploy ระบบ
+## Users
 
-## Current phase
+- Merchant operators จัดการผู้ใช้ บทบาท รายการคำสั่งซื้อ ธุรกรรม และกรมธรรม์
+- Admin users จัดการ Admin user/role และโครงสร้างองค์กร
+- Control-plane users ตรวจ approvals, audit, PSP, routing, webhooks และ reports
+- Public users เข้าหน้า register และ checkout
 
-Repository นี้เป็น Merchant bootstrap ที่คัดลอก baseline จาก source repository
-ที่ระบุใน approved spec ณ commit
-`bb001b30b1379df2eedd4ecfcb09c9d23afe6434` แล้วเปลี่ยน product/runtime contract
-สำหรับ Merchant
-
-สิ่งที่พร้อม:
-
-- Merchant identity และ public entry flow
-- route สำหรับ login, registration และ health check
-- protected Merchant shell สำหรับตรวจ UI ใน development
-- runtime แยก development, staging และ production
-- container และ CI gate
-
-สิ่งที่ยังไม่พร้อม:
-
-- Merchant authentication และ session จริง
-- backend integration ครบทุก protected feature
-- production authorization policy
-
-protected shell จึงปิดเป็นค่าเริ่มต้นและตอบ 404 เปิด preview ได้เฉพาะ development
-ด้วย `MERCHANT_SHELL_PREVIEW=true`
-
-## Product boundaries
-
-อยู่ในขอบเขต:
-
-- `/login`, `/register`, `/login-error`
-- dashboard และงานขาย Merchant
-- policy, checkout, order และ transaction
-- Merchant user และ role management
-- Merchant API namespace `/producer/*`
-
-ไม่อยู่ในขอบเขต:
-
-- back-office control plane
-- organization master-data management
-- การใช้ session หรือ credential จากระบบต้นทาง
-- การเปิด protected shell บน staging/production ก่อนมี authentication จริง
-
-ไฟล์ legacy ที่ยังอยู่เพื่อรักษา source baseline ไม่ถือเป็น public product surface
-และห้ามเพิ่มเข้าการนำทางหรือ route โดยไม่มี spec ใหม่
-
-## Runtime contract
-
-| Environment | Platform | Port | API mode |
-|---|---|---:|---|
-| development | macOS, Windows | 5300 | Next.js rewrite ไป `MERCHANT_API_ORIGIN` |
-| staging | Ubuntu 24.04 | 3000 | same-origin reverse proxy |
-| production | Ubuntu 24.04 | 3000 | same-origin reverse proxy |
-
-Runtime ใช้ Node.js 22.19.0 และ npm 11.12.1
-
-staging และ production ต้องใช้ artifact/image digest เดียวกัน production deploy
-เกิดได้หลัง staging ผ่านเท่านั้น
-
-## API boundary
-
-Development:
+## Current source of truth
 
 ```text
-/producer/:path* -> ${MERCHANT_API_ORIGIN}/api/v1/merchants/:path*
+public/
+src/
+  app/
+  components/
+  hooks/
+  lib/
+  types/
+package.json
+package-lock.json
+next.config.ts
+tsconfig.json
+vitest.config.ts
 ```
 
-staging/production:
+เป็น single root package. ไม่มี npm workspaces, `apps/`, `packages/` หรือ package aliases
+`@pol/ui` / `@pol/shared`. Internal imports ใช้ `@/`.
 
-- browser เรียก `/producer/*` แบบ same-origin
-- reverse proxy ภายนอกส่งต่อไป Merchant API
-- ห้ามฝัง backend origin หรือ credential ใน client bundle
+## Route contracts
 
-## Source-baseline policy
+Canonical Merchant routes:
 
-source baseline ใช้ตรวจว่าการคัดลอกครบ ไม่ได้ห้ามแก้เพื่อ:
+```text
+/user/list
+/user/new
+/user/read
+/user/edit
+/role/list
+/role/create
+/role/read
+/role/edit
+```
 
-- Merchant identity และ route boundary
-- environment/runtime contract
-- security remediation ที่มีหลักฐาน
-- tests, CI และ operating documentation
+Legacy `/merchant/user/*` และ `/merchant/role/*` ตอบ permanent `308` ไป canonical route
+และรักษา query string. Admin routes `/admin/user/*` และ `/admin/role/*` ยังคงอยู่.
 
-ทุก divergence ต้อง trace กลับ requirement/task และบันทึกใน spec handoff
+Root `/` redirect `307` ไป `/dashboard`. `/register` เป็น public. Protected surfaces ใช้
+auth state/guard ตาม layout ของแต่ละกลุ่ม.
 
-## Success criteria
+คำว่า `Merchant`, `MerchantCode`, `MerchantUser*` และ backend path `/producer/*`
+เป็น domain/API vocabulary ที่ยังถูกต้อง. ห้ามตีความว่า semantic name เหล่านี้เป็น directory
+namespace ที่ต้องยุบ.
 
-- ผู้พัฒนารัน development ได้บน macOS และ Windows ที่ port 5300
-- staging/production รันบน Ubuntu 24.04 ที่ port 3000
-- public UI แสดง Merchant identity โดยไม่มี product identity เดิม
-- protected route ไม่เปิดใน deployed environment ก่อน authentication พร้อม
-- test, lint, typecheck, build, dependency audit และ spec trace ผ่าน
-- production promote ผ่าน staging และมี rollback digest
+## Authentication and API
 
-## Sources of truth
+Frontend ไม่เก็บ bearer token. Admin session อยู่ใน backend-managed httpOnly cookie.
 
-- Requirements/design/tasks: `.claude/specs/merchant-portal-bootstrap/`
-- Architecture: `.ai/shared/ARCHITECTURE.md`
-- Next.js conventions: `.ai/shared/stack/nextjs.md`
-- Coding standards: `.ai/shared/CODING_STANDARDS.md`
-- Security rules: `.ai/shared/SECURITY_RULES.md`
-- Runbook: `README.md` และ `docs/dev-setup.md`
+- `AdminMe`: `src/types/auth.ts`
+- `getMe` และ authenticated fetch helpers: `src/lib/api/admin/auth.ts`
+- `AuthProvider`: `src/components/auth/auth-provider.tsx`
+- `AuthGuard`: `src/components/auth/auth-guard.tsx`
+
+Development variables อยู่ root `.env.local` ซึ่งสร้างจาก `.env.example`:
+
+```text
+ADMIN_API_ORIGIN=https://localhost:5001
+NEXT_PUBLIC_API_ORIGIN=https://localhost:5001
+```
+
+เมื่อ `ADMIN_API_ORIGIN` มีค่า:
+
+```text
+/admin/*    -> ADMIN_API_ORIGIN/api/v1/admins/*
+/producer/* -> ADMIN_API_ORIGIN/api/v1/merchants/*
+/api/*      -> ADMIN_API_ORIGIN/api/*
+```
+
+Production ปกติใช้ same-origin reverse proxy และไม่สร้าง Next rewrite.
+
+## Runtime
+
+- Node.js 22.19.0
+- npm 11.12.1
+- Next.js 16.3.1
+- React 19.2.4
+- HTTPS development port 3002
+- Production standalone output
+- Docker non-root UID 1001, port 3002
+
+Root scripts เป็น interface เดียวสำหรับ install, audit, test, lint, typecheck, build และ start.
+
+## Quality floor
+
+CI รัน guard tests, secret scan, spec trace, production dependency audit, Vitest, ESLint,
+TypeScript, production build และ HTTP/development smoke ตาม OS. Git hooks ตรวจ secrets,
+Evidence และ protected/force pushes.
+
+งาน non-trivial ใช้ requirements -> design -> tasks -> implementation. Historical specs และ
+retrospectives เก็บ state ตามเวลาที่สร้าง; ไม่ใช่ current architecture.

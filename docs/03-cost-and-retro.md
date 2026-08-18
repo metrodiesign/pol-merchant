@@ -54,5 +54,5 @@ cost ต่อ session/task ที่เชื่อถือได้ดึง�
 
 ## 3.6 ใน automation loop
 
-pane-loop เรียก `/spec-retro` ให้อัตโนมัติหลังแต่ละ task -> ledger ของ pane session นั้นถูกเขียน
-ระหว่างทาง, retro commit เป็นสัญญาณให้ loop ไป task ถัดไป (ดู [02-automation.md](02-automation.md) §2.3).
+pane-loop เรียก `/spec-retro` หนึ่งครั้งหลังแต่ละ group -> ledger ของ pane session นั้นถูกเขียน
+ระหว่างทาง, retro commit เป็นสัญญาณให้ loop ไป group ถัดไป (ดู [02-automation.md](02-automation.md)).
