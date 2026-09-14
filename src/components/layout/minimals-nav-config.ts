@@ -8,7 +8,7 @@ import { type NavGroup } from "./nav-config";
 export const minimalsNavConfig: NavGroup[] = [
   // ── Main ────────────────────────────────────────────────────────────────
   {
-    subheader: "Main",
+    subheader: "", // no label — dashboard sits alone above the first section
     items: [{ title: "แดชบอร์ด", path: "/dashboard", icon: "dashboard" }],
   },
 
@@ -43,15 +43,15 @@ export const minimalsNavConfig: NavGroup[] = [
     items: [
       {
         title: "ตัวแทน/นายหน้า",
-        path: "/user/list",
+        path: "/merchant/user/list",
         icon: "user",
-        match: "/user",
+        match: "/merchant/user",
       },
       {
         title: "บทบาทและสิทธิ์",
-        path: "/role/list",
+        path: "/merchant/role/list",
         icon: "lock",
-        match: "/role",
+        match: "/merchant/role",
       },
     ],
   },
@@ -75,42 +75,12 @@ export const minimalsNavConfig: NavGroup[] = [
     ],
   },
 
-  // ── โครงสร้างองค์กร (master data ผูกกับ admin user profile) ────────────────
-  {
-    subheader: "โครงสร้างองค์กร",
-    items: [
-      {
-        title: "สำนักงาน",
-        path: "/organization/office/list",
-        icon: "building",
-        match: "/organization/office",
-      },
-      {
-        title: "แผนก",
-        path: "/organization/division/list",
-        icon: "sitemap",
-        match: "/organization/division",
-      },
-      {
-        title: "ตำแหน่ง",
-        path: "/organization/position/list",
-        icon: "badge",
-        match: "/organization/position",
-      },
-      {
-        title: "ระดับ",
-        path: "/organization/level/list",
-        icon: "ranking",
-        match: "/organization/level",
-      },
-    ],
-  },
 
   // ── Control plane · การเชื่อมต่อ ───────────────────────────────────────────
   {
     subheader: "Control plane · การเชื่อมต่อ",
     items: [
-      { title: "การเชื่อมต่อ PSP", path: "/control/psp/list", icon: "banking", match: "/control/psp" },
+      { title: "การเชื่อมต่อ PSP", path: "/control/psp/list", icon: "banking", match: "/control/psp", requiredPermission: "settings.manage" },
       { title: "กฎการกำหนดเส้นทาง", path: "/control/routing", icon: "analytics", match: "/control/routing" },
       { title: "ไคลเอนต์ API", path: "/control/api-clients", icon: "lock", match: "/control/api-clients" },
       { title: "Webhooks และเหตุการณ์", path: "/control/webhooks", icon: "folder", match: "/control/webhooks" },

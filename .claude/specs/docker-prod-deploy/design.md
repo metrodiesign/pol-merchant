@@ -1,178 +1,282 @@
-# Design: Docker Production Deployment (pol-admin)
-> Status: approved 2026-07-13, amended 2026-07-13
+# Design: Docker Prod Deploy
+
+> Status: approved 2026-07-13, amended 2026-07-13 (backfill REQ traceability after /spec-requirements derive)
+
+อ้างอิง: /spec-new answers (2026-07-13). Design-First — ไม่มี requirements.md/REQ ID มาก่อน
+(/spec-requirements จะ backfill ทีหลัง). Stack: Next 16.2.6 App Router / React 19.2.4 / npm.
+scope ล็อกจาก /spec-new: **แค่ frontend container image**, target self-hosted/Kubernetes,
+purpose = staging/UAT (prod-shaped แต่ยังไม่รับ user traffic จริง), registry ยังไม่ตัดสินใจ,
+ไม่แตะ `.github/workflows/ci.yml` รอบนี้.
 
 ## Architecture Overview
 
-Component ใหม่/แก้ไขทั้งหมด (scope = repo นี้เท่านั้น, `pol-core` เป็น sibling repo ไม่แตะ):
+Docker multi-stage build เดียว (`deps` -> `builder` -> `runner`) ผลิต production image ของ
+Next.js frontend นี้เท่านั้น — ไม่มี reverse proxy, ไม่มี backend, ไม่มี docker-compose (single
+service ไม่ต้อง orchestrate หลาย container ในสโคปนี้).
 
-| Component | ประเภท | หน้าที่ |
-|---|---|---|
-| `next.config.ts` (`output: "standalone"`) | แก้ไฟล์เดิม | เปิด Next.js standalone build — trace เฉพาะ dependency ที่ runtime ต้องใช้จริงเข้า `.next/standalone`, ตัด `node_modules` เต็มออกจาก image |
-| `Dockerfile` | ไฟล์ใหม่ | multi-stage build: `deps` → `builder` → `runner` (`node:20-alpine`, non-root) |
-| `.dockerignore` | ไฟล์ใหม่ | กัน `.env*`, `node_modules`, `.git`, `.next` cache หลุดเข้า build context/image layer |
-| `src/app/api/health/route.ts` | ไฟล์ใหม่ | liveness endpoint สำหรับ nginx/orchestrator health check |
-| `docker-compose.yml` | ไฟล์ใหม่ | รัน `pol-admin` image เดี่ยวๆ (ไม่รวม `pol-core`) สำหรับ smoke-test แบบ prod-like ก่อน deploy จริง |
+ไฟล์ที่เพิ่ม/แก้:
 
-Runtime topology (self-host หลัง reverse proxy — ตาม decision ที่ confirm แล้ว, ตรงกับที่
-`next.config.ts`/`README.md`/`docs/dev-setup.md` ตั้งใจไว้อยู่แล้ว):
+- `Dockerfile` (ใหม่, root) — 3 stage
+- `.dockerignore` (ใหม่, root)
+- `next.config.ts` (แก้) — เพิ่ม `output: "standalone"`
+- `package.json` (แก้) — เพิ่ม `sharp` เป็น prod dependency
 
+**ขอบเขตชัดเจน (สำคัญ เพราะเคย ambiguous มาก่อนใน /spec-new):** reverse proxy ที่เสิร์ฟ
+SPA+backend origin เดียวกัน และตัว backend (`pol-core`, OIDC BFF) เป็นของ repo/ทีมอื่น
+ทั้งคู่ — container นี้แค่ต้อง **compatible** กับ topology นั้น (ไม่ hardcode origin, ไม่ผูก
+proxy config เอง) ไม่ใช่ต้อง provision มันเอง.
+
+```mermaid
+flowchart LR
+    subgraph InScope["IN SCOPE — spec นี้"]
+        Container["pol-admin container<br/>node server.js :5200<br/>(standalone output)"]
+    end
+    subgraph OutOfScope["OUT OF SCOPE — repo/ทีมอื่น"]
+        Proxy["Reverse proxy<br/>(same-origin SPA+API)"]
+        Backend["pol-core backend<br/>(OIDC BFF: /admin/*, /producer/*)"]
+    end
+    Browser["Browser"] --> Proxy
+    Proxy -- "ทุก path อื่น" --> Container
+    Proxy -- "/admin/*, /producer/*" --> Backend
+    Container -. "next/image remote fetch (runtime)" .-> External["r2.dev, api.dicebear.com,<br/>api-prod-minimal-v700.pages.dev"]
 ```
-Internet → nginx (TLS termination, same-origin routing)
-             ├── /, /_next/*, static assets  → pol-admin container :5300 (repo นี้)
-             └── /admin/*, /producer/*        → pol-core container :5100 (sibling repo, out of scope)
-```
-
-nginx คือคนเดียวที่ทำหน้าที่ same-origin routing ใน prod แทน Next.js `rewrites()` ที่ทำงานเฉพาะ dev
-(`ADMIN_API_ORIGIN` ต้องเว้นว่างใน prod เพื่อปิด rewrite นั้น — ดู Data Models & Interfaces).
 
 ## Sequence Diagrams
 
-**1. Build & tag (manual — ไม่ wire CI ใน feature นี้ตาม decision ที่ confirm แล้ว):**
-
-```mermaid
-flowchart TB
-    subgraph Build["docker build (multi-stage)"]
-        deps["deps stage\nnpm ci"] --> builder["builder stage\nnpm run build (standalone output)"]
-        builder --> runner["runner stage\nnode:20-alpine, non-root user\ncopy .next/standalone + .next/static + public"]
-    end
-    runner --> tag["tag: pol-admin:{package.json version}-{git short SHA}"]
-    tag --> host["docker save/transfer → self-hosted prod host (manual)"]
-```
-
-**2. Runtime request flow (prod, หลัง nginx):**
+### Build-time flow
 
 ```mermaid
 sequenceDiagram
-    participant B as Browser
-    participant N as nginx (reverse proxy)
-    participant A as pol-admin container :5300
-    participant C as pol-core container :5100 (sibling repo)
+    participant Dev as Developer/CI (build host)
+    participant Deps as Stage: deps
+    participant Builder as Stage: builder
+    participant Runner as Stage: runner
 
-    B->>N: GET / , /_next/*, static assets
-    N->>A: proxy_pass (same-origin)
-    A-->>N: 200 HTML/JSON
-    N-->>B: 200
-
-    B->>N: GET /admin/* หรือ /producer/* (BFF/OIDC auth)
-    N->>C: proxy_pass (same-origin)
-    C-->>N: 200 + Set-Cookie (httpOnly)
-    N-->>B: 200
+    Dev->>Deps: docker build .
+    Deps->>Deps: FROM node:22-alpine<br/>apk add libc6-compat<br/>npm ci (package-lock.json)
+    Deps->>Builder: node_modules
+    Builder->>Builder: COPY source (.dockerignore ตัด node_modules/.next/.env*/spec dirs ออก)
+    Builder->>Builder: ENV NODE_ENV=production<br/>npm run build (next build, output:"standalone")
+    Note over Builder: ต้องมี outbound HTTPS ตอน build<br/>(next/font/google ดาวน์โหลดฟอนต์ตอน build time)
+    Builder->>Runner: .next/standalone, .next/static, public/
+    Runner->>Runner: สร้าง non-root user (nextjs:nodejs)<br/>mkdir .next && chown ก่อน copy (prerender cache writable)
+    Runner->>Runner: COPY --chown=nextjs:nodejs (standalone+static+public)
+    Runner-->>Dev: image พร้อม (ยังไม่ tag registry — undecided)
 ```
 
-**3. Health check:**
+### Runtime request flow (ภายใน scope ของ container เอง)
 
 ```mermaid
 sequenceDiagram
-    participant O as nginx / Docker HEALTHCHECK
-    participant A as pol-admin container
+    participant Proxy as Reverse proxy (out of scope)
+    participant Server as node server.js (:5200, USER nextjs)
+    participant Ext as External image hosts
 
-    loop ทุก N วินาที
-        O->>A: GET /api/health
-        A-->>O: 200 "ok"
+    Proxy->>Server: HTTP request (path ที่ไม่ใช่ /admin/*, /producer/*)
+    Server->>Server: serve .next/static, public/, SSR page
+    opt page ใช้ next/image กับ remote pattern
+        Server->>Ext: fetch + optimize (ต้องมี sharp + egress ออกนอก)
+        Ext-->>Server: image bytes
     end
-    Note over O,A: fail ติดกัน K ครั้ง → restart container
+    Server-->>Proxy: response
 ```
 
 ## Data Models & Interfaces
 
-**Runtime env contract** (ยืนยันจาก `.env.example` จริง — มีตัวแปรเดียว):
+ไม่มี schema/type ใหม่ (ไม่ใช่ business domain) — "interface" ของ spec นี้คือไฟล์ infra
+ที่เพิ่ม/แก้ ระบุ exact content ตามที่ตกลง (module/interface level):
 
-| Variable | Required | Prod value | หมายเหตุ |
-|---|---|---|---|
-| `ADMIN_API_ORIGIN` | optional | **เว้นว่าง/unset** | ถ้าตั้งค่าใน prod จะไปเปิด `next.config.ts` `rewrites()` (ตั้งใจไว้เฉพาะ dev) โดยไม่ตั้งใจ — ดู Error Handling |
+### `Dockerfile` (ใหม่, root)
 
-ไม่มี secret/API key อื่นที่ container ต้องรับตอนนี้ (repo scope) — ทำให้ env contract เรียบง่ายมาก
-ไม่มี "missing required var" failure mode ให้ handle.
+```dockerfile
+# syntax=docker/dockerfile:1
 
-**Container interface:**
-- `EXPOSE 5300`
-- Entrypoint: `node server.js` (ไฟล์ที่ Next.js standalone output generate เอง — มาแทน `next start`)
-- Health interface: `GET /api/health` → `200` body `"ok"` (plain text, ไม่ต้อง JSON — เบาที่สุดพอ)
+FROM node:22-alpine AS base
 
-**docker-compose.yml interface** (scope: pol-admin เดี่ยว):
-- service เดียว `pol-admin`: `build: .`, `ports: ["5300:5300"]`, `env_file` ชี้ไฟล์ env ที่**ไม่ commit**
-  (ตาม Secrets rules), `restart: unless-stopped`
+# ---- deps: install dependencies only ----
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# ---- builder: build the app ----
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# NEXT_PUBLIC_* ใด ๆ ที่ต้องการต้อง ARG/ENV ก่อนบรรทัด build นี้ (ค่า inline เข้า JS bundle
+# ตอน build เท่านั้น) — ปัจจุบัน grep source แล้วไม่มี NEXT_PUBLIC_* ตัวไหนที่โค้ด live ใช้
+# (ดู Error Handling Strategy: NEXT_PUBLIC_GOOGLE_CLIENT_ID_* เป็นของเก่าที่ dead แล้ว)
+# NEXT_PUBLIC_SKIP_AUTH: ตั้งใจไม่ ARG/ENV ที่นี่ — prod build ต้องไม่ bake flag นี้เข้าไปเลย
+ENV NODE_ENV=production
+RUN npm run build
+
+# ---- runner: minimal production image ----
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=5200
+ENV HOSTNAME=0.0.0.0
+# ADMIN_API_ORIGIN: ตั้งใจไม่ set — next.config.ts rewrites() คืน [] เมื่อไม่ set
+# (reverse proxy เสิร์ฟ SPA+API origin เดียวกันอยู่แล้วใน prod)
+
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# permission ก่อน copy standalone — ให้ prerender/ISR cache เขียนได้ตอน runtime
+RUN mkdir .next && chown nextjs:nodejs .next
+
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 5200
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||5200)+'/', r=>{process.exit(r.statusCode<500?0:1)}).on('error',()=>process.exit(1))"
+
+CMD ["node", "server.js"]
+```
+
+### `.dockerignore` (ใหม่, root)
+
+```
+node_modules
+.next
+.git
+.github
+.githooks
+.claude
+.ai
+.agents
+.codex
+.opencode
+docs
+retrospectives
+scripts
+*.md
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage
+.playwright-mcp
+next-env.d.ts
+tsconfig.tsbuildinfo
+Dockerfile
+.dockerignore
+```
+
+`.gitignore` กับ `.dockerignore` เป็นคนละกลไก — COPY ใน Dockerfile ไม่มองไฟล์ที่ gitignore
+เว้น (`.env.local` เป็นตัวอย่างจริงที่มี local var อยู่) ต้องกันซ้ำที่ `.dockerignore` เอง.
+
+### `next.config.ts` (diff)
+
+```diff
+ const nextConfig: NextConfig = {
++  output: "standalone",
+   images: {
+     remotePatterns: [
+```
+
+### `package.json` (diff)
+
+```diff
+   "dependencies": {
+     "@base-ui/react": "^1.5.0",
++    "sharp": "^0.33.0",
+```
+
+(pin เวอร์ชันจริงตอน `npm install sharp` ที่ /spec-implement — เลขนี้เป็น placeholder
+บ่งชี้ major/minor range ปัจจุบัน ไม่ใช่ตัวที่ต้อง lock เป๊ะ)
 
 ## Technology Decisions
 
 | Decision | เลือก | เหตุผล |
 |---|---|---|
-| Build output mode | `output: "standalone"` ใน `next.config.ts` | ลด image size มาก (trace เฉพาะ dep ที่ใช้จริง) — pattern มาตรฐานของ Next.js + Docker; ต้อง verify syntax/behavior จริงกับ Next.js 16 ตอน implement (version ใหม่) |
-| Build strategy | multi-stage (`deps`/`builder`/`runner`) | runner ไม่มี devDependency/build cache หลงเหลือ — image เล็กลง, attack surface น้อยลง |
-| Base image | `node:20-alpine` | ตรง Node 20 LTS ที่ `docs/dev-setup.md` ระบุ; dependency ทั้งหมด (`recharts`/`simplebar`/`@base-ui/react`/`@tanstack/react-table` ฯลฯ) เป็น pure JS ไม่มี native binding — alpine (musl) ปลอดภัย ไม่เสี่ยง incompat |
-| Runtime user | non-root ใน runner stage | container security baseline มาตรฐาน |
-| `.dockerignore` | ครอบ `.env*`, `node_modules`, `.git`, `.next` | กัน secret/ไฟล์ไม่จำเป็นหลุดเข้า build context ตาม Secrets rules |
-| Health check | เพิ่ม `src/app/api/health/route.ts` | endpoint เปล่าคืน 200 — มาตรฐานสำหรับ nginx/orchestrator liveness, เขียนสั้น ไม่กระทบ route อื่น |
-| HEALTHCHECK poll mechanism | ใช้ Node เอง (`node -e` ยิง HTTP) แทน `curl`/`wget` | `node:20-alpine` ไม่มี `curl`/`wget` ติดมาโดย default — ใช้ Node ที่มีอยู่แล้วในตัว image ตรงเป้า minimal image, ไม่เพิ่ม package (จาก /spec-analyze finding #1) |
-| HEALTHCHECK `start_period` | ~10 วินาที | กัน false-unhealthy ระหว่าง container cold start ก่อน Next.js server พร้อมรับ request (จาก /spec-analyze finding #6) |
-| Image tag | `{package.json version}-{git short SHA}` | trace กลับ commit ตรง — ตรง Deploy/Release rules ที่ขอ tag เวอร์ชันชัดเจนทุก release |
-| docker-compose scope | `pol-admin` เดี่ยวๆ | `pol-core` เป็น sibling repo — ต้องขอ confirm แยกก่อนแตะตาม repo-scope rule; full-stack compose ทำเป็น feature แยกได้ถ้าต้องการทีหลัง |
-| CI wiring | ไม่ทำในรอบนี้ | `.github/workflows/ci.yml` ปัจจุบันยังไม่รัน build/test/lint ของ pol-admin เลย — wire registry push ก่อนมี baseline นั้นจะข้ามขั้น |
-
-## Non-Functional Considerations
-
-*(section นี้ครอบ constraint ที่ทำให้เลือก Design-First แทน Requirements-First — งานเริ่มจาก
-architecture/non-functional constraint ไม่ใช่ user behavior)*
-
-- **Topology constraint (ตายตัว ไม่ negotiable ในงานนี้)**: same-origin reverse-proxy routing —
-  ฝังอยู่ใน `next.config.ts` comment + `docs/dev-setup.md` request-flow diagram อยู่แล้วก่อนงานนี้
-  เริ่ม; เปลี่ยน topology (เช่นไป managed platform) กระทบ auth flow (OIDC BFF cookie) ด้วย ไม่ใช่แค่
-  deploy mechanism
-- **Security**: ห้าม secret หลุดเข้า image layer, non-root runtime, base image เล็กสุดเท่าที่ทำได้
-  โดยไม่เสี่ยง compat
-- **Image size / transfer**: self-host ต้อง `docker save`/transfer image เอง (ไม่มี registry ใน
-  scope นี้) — standalone output + alpine ช่วยให้ transfer เร็ว/เบา
-- **Version consistency**: pin Node 20 LTS ให้ตรง dev requirement (`docs/dev-setup.md`) กัน
-  runtime drift ระหว่าง dev/prod
-- **Compat**: alpine (musl) ยืนยันปลอดภัยกับ dependency tree ปัจจุบัน (pure JS ทั้งหมด) — ถ้าเพิ่ม
-  dependency ที่มี native binding ในอนาคต ต้อง revisit เป็น `node:20-slim`
+| Base image | `node:22-alpine` (pin patch tag จริงตอน implement) | Next.js ต้องการ Node >=20.9.0 (official docs, ยืนยันผ่าน context7). เครื่อง dev local มี node 26 ซึ่งเป็น **Current ไม่ใช่ LTS** — ไม่ใช้เป็น base ของ prod image. alpine = pattern ของ official Next.js Docker example, image เล็ก |
+| `output: "standalone"` | เพิ่มใน `next.config.ts` | official self-host Docker recipe — output file tracing เอาเฉพาะ dependency ที่ build จริงต้องใช้ ลด image size มาก เทียบกับ copy `node_modules` เต็ม |
+| `sharp` เป็น prod dependency | เพิ่มใน `package.json` | self-host image optimization best practice ของ Next.js เอง; `next/image` + `remotePatterns` ถูกใช้จริง (grep เจอ 20+ ไฟล์ import `next/image`) ไม่ใช่ config ที่ตายแล้ว |
+| Non-root runtime user | `nextjs:nodejs` (uid/gid 1001) | security baseline มาตรฐาน — official Next.js Docker example ก็ทำแบบนี้ |
+| Multi-stage (deps/builder/runner) | 3 stage แยก | stage `runner` สุดท้ายไม่มี devDependencies/build tool/source เต็ม — ลด attack surface + size |
+| ไม่มี `docker-compose.yml` | ตัดออกจากสโคป | ตัดสินใจแล้วใน /spec-new — "แค่ frontend image", single service ไม่ต้อง orchestrate |
+| ไม่แตะ `ci.yml` รอบนี้ | ตัดออกจากสโคป | ตัดสินใจแล้วใน /spec-new — build/push automation เป็นงานถัดไป |
+| Dockerfile ไม่ผูก registry | ไม่มี registry reference ใน Dockerfile | registry ยังไม่ตัดสินใจ (/spec-new) — tag ใส่ตอน `docker build -t`/`docker push` ภายนอกไฟล์นี้ |
+| คง port 5200 | `ENV PORT=5200` / `EXPOSE 5200` | ตรงกับ `dev`/`start` script เดิมของโปรเจกต์ (`next dev -p 5200`, `next start -p 5200`) — ไม่สร้าง convention ใหม่ |
+| HEALTHCHECK ด้วย inline `node -e` | ไม่ใช้ curl/wget | alpine base ไม่การันตีมี curl; node มีอยู่แล้วเสมอในทุก stage |
 
 ## Error Handling Strategy
 
-| Error case | การจัดการ |
-|---|---|
-| `npm run build` fail ระหว่าง `docker build` | build stage exit non-zero, image ไม่ถูกสร้าง — fail fast ตามปกติของ Docker multi-stage |
-| `ADMIN_API_ORIGIN` ถูกตั้งค่าโดยไม่ตั้งใจใน prod | mitigate 2 ชั้น: (1) comment ชัดเจนใน `docker-compose.yml`/env template ว่า "ต้องเว้นว่าง" (ตรงกับ pattern ที่ `next.config.ts`/README ใช้อยู่แล้ว) (2) **startup log warning** ถ้า `NODE_ENV=production` และ `ADMIN_API_ORIGIN` ถูกตั้งค่า — ไม่ fail-fast แค่ log ชัดๆ (REQ-2.4, จาก /spec-analyze finding #2: doc comment อย่างเดียวจับ silent misconfiguration ไม่ได้จริง) |
-| Health check fail ต่อเนื่อง | Docker `HEALTHCHECK` directive (retries+interval) → container ถูก mark unhealthy → nginx/host process manager restart ตาม policy ปกติของ host นั้น |
-| Container ขึ้นแล้วแต่ route คืน 404 ทุกเส้น (Turbopack-zombie pattern ที่เคยเจอใน dev — `LESSONS.md`) | verification step ต้อง `curl -i` ดู body จริง ไม่เชื่อแค่ status code — ระบุไว้ชัดใน Testing Strategy |
-| Missing required env var | ไม่มี failure mode นี้ในตอนนี้ — มีแค่ `ADMIN_API_ORIGIN` ที่เป็น optional (ปลอดภัยตอนไม่ตั้งค่า) |
+| เคส | ผลถ้าไม่จัดการ | วิธีจัดการ |
+|---|---|---|
+| build ไม่มี outbound network (Google Fonts) | `next/font/google` ดาวน์โหลดฟอนต์ตอน **build time** — build fail ถ้าเข้าเน็ตไม่ได้ | เอกสารไว้เป็น build-environment requirement: ต้องมี outbound HTTPS ตอน build (ไม่ใช่แค่ runtime) |
+| `sharp` native binding ผิด CPU arch | fallback ช้าลง หรือ runtime error ตอน optimize รูป | build image ให้ตรง target arch ของ deployment (เช่น deploy ขึ้น arm64 node ต้อง build arm64) — ไม่ assume x86 เสมอ |
+| container ไม่มี egress ไปโฮสต์รูป remote (r2.dev, dicebear, minimal pages.dev) | `next/image` optimize รูปพวกนี้ fail ตอน runtime | เอกสารไว้ให้คนตั้งค่า K8s NetworkPolicy (นอกสโคปสร้างเอง) ต้อง allowlist 3 host นี้ |
+| ตั้ง `ADMIN_API_ORIGIN` หลุดเข้า prod image | `rewrites()` จะ proxy `/admin/*` เอง ชนกับสมมติฐาน same-origin ของ reverse proxy จริง (คนละ origin behavior, กระทบ CSRF cookie) | ต้องไม่ set var นี้ตอน build/run prod image เด็ดขาด — ตรวจสอบตอน Testing Strategy |
+| `NEXT_PUBLIC_SKIP_AUTH=true` หลุดเข้า prod build | ไม่มีผลจริง — `auth-provider.tsx:20` gate ด้วย `NODE_ENV!=='production'` อยู่แล้ว (verified) | defense-in-depth เฉย ๆ: prod build process ไม่ควร pass flag นี้อยู่ดี แม้ inert |
+| non-root user เขียน `.next` cache ไม่ได้ | `EACCES` ตอน runtime พยายามเขียน prerender/ISR cache | ตาม official pattern: `mkdir .next && chown` **ก่อน** copy standalone output |
+| `.env.local` มี `NEXT_PUBLIC_GOOGLE_CLIENT_ID_ADMIN`/`_PRODUCER` ที่ `.env.example` ไม่ได้ระบุ | ตอนแรกเข้าใจผิดว่าเป็น required build arg ที่ขาด | ตรวจแล้ว: มาจาก GIS client-side flow เดิมที่ **superseded 2026-06-24** (`login-google-sso` design.md Addendum — backend เปลี่ยนเป็น server-side OIDC BFF, `src/lib/auth/*` เดิมถูกลบทั้งหมด). grep source ปัจจุบันยืนยันไม่มีที่ไหนอ่าน 2 var นี้แล้ว — **dead, ไม่ต้อง wire เข้า Docker build**. flag ไว้เป็น repo cleanup แยก (`.env.local` มี var เก่าค้าง) ไม่ใช่ scope ของ spec นี้ |
 
 ## Testing Strategy
 
-*(backfilled — map กับ REQ ID จริงหลัง `/spec-requirements` derive requirements.md จาก design นี้)*
+map กับ REQ ID จริงแล้ว (backfill จาก requirements.md, derive มาจาก section ด้านล่างของ design นี้):
 
-| Test | REQ ที่ตรวจ |
-|---|---|
-| `docker build .` ผ่าน, exit 0 | REQ-1.1, REQ-1.2, REQ-1.4 |
-| `docker run` แล้ว `curl -i http://localhost:5300/` ได้ 200 + HTML body จริง (ไม่ใช่แค่ status code — กัน zombie-pattern false positive) | REQ-2.1, REQ-2.2 |
-| `curl -i http://localhost:5300/api/health` ได้ 200 `"ok"` | REQ-3.1 |
-| รันโดยไม่ตั้ง `ADMIN_API_ORIGIN` (หรือตั้งว่าง) แล้ว build ไม่มี dev-rewrite behavior หลุดเข้า prod | REQ-2.2, REQ-2.3 |
-| `docker history <image> --no-trunc \| grep -i env` ไม่เจอ `.env*` หลุดเข้า layer | REQ-5.1, REQ-5.2 |
-| เทียบ image size ก่อน/หลังใช้ `output: "standalone"` | REQ-1.2 |
-| image ที่ build ได้ tag ตรง `{version}-{git short SHA}` | REQ-4.1 |
-| `docker-compose up` มีแค่ service `pol-admin` เดี่ยว | REQ-4.2 |
-| รันด้วย `ADMIN_API_ORIGIN` ตั้งค่า + `NODE_ENV=production` แล้วดู log มี startup warning จริง | REQ-2.4 |
-| `docker inspect <container>` เห็น `Healthcheck.StartPeriod` ~10s | REQ-3.4 |
-| `.ai/bin/gate-task.sh` เขียว (typecheck/test/lint auto-detect จาก `package.json`) | Definition of Done มาตรฐานของ repo (`TASK_PROTOCOL.md` — ไม่ผูก REQ เฉพาะ) |
+- **Build succeeds**: `docker build -t pol-admin:local .` จบโดยไม่ error → REQ-1.1, 1.2, 1.10, 1.11
+- **Container runs + responds**: `docker run -p 5200:5200 pol-admin:local` แล้ว `curl -i localhost:5200/` ได้ 200 → REQ-4.4, 4.5
+- **Non-root confirmed**: `docker run pol-admin:local whoami` ≠ `root` → REQ-4.1, 4.2
+- **ไม่มี secret หลุดเข้า image**: inspect layer (`docker history` / extract แล้ว grep หา `.env`) ต้องไม่เจอ `.env.local`/`.env` เนื้อหาจริง → REQ-5.1, 5.2, 5.3, 5.5, 5.6
+- **`ADMIN_API_ORIGIN` ไม่ถูก bake**: `docker run pol-admin:local env` ต้องไม่มี `ADMIN_API_ORIGIN` → REQ-5.4
+- **`NEXT_PUBLIC_SKIP_AUTH` ไม่ถูก bake**: build image แบบ prod แล้วเช็คว่า flag ไม่ true → REQ-2.1, 2.2
+- **static asset โหลดได้**: เปิดหน้าเว็บผ่าน container จริง เช็ค CSS/font/รูปที่ import จาก `public/` ขึ้นครบ (ไม่ 404) → REQ-1.6, 3.1, 3.2
+- **HEALTHCHECK ขึ้น healthy**: `docker inspect --format='{{.State.Health.Status}}'` หลัง start-period ต้อง `healthy` → REQ-4.6, 4.7, 4.8
+- **scope boundary**: ตรวจ repo ไม่มี `docker-compose.yml` ใหม่ ไม่มี diff ใน `ci.yml`, `Dockerfile` ไม่มี registry host hardcode → REQ-6.1, 6.2, 6.3, 6.4
+
+## Non-Functional Considerations
+
+(section นี้บังคับเพราะ Design-First — constraint ที่ผลักดันงานนี้เป็น non-functional/infra ไม่ใช่ product behavior)
+
+- **Security**: non-root runtime user, multi-stage ตัด devDependencies/source ทิ้งจาก final image, `.dockerignore` กัน `.env*` หลุดเข้า build context ตั้งแต่ต้นทาง (คนละกลไกจาก `.gitignore`), ไม่มี credential/registry อะไร bake ใน Dockerfile
+- **Portability**: ไม่มี cloud-specific SDK/API ผูกไว้ — รันได้บน container runtime ทั่วไป (K8s ที่ตกลงไว้, plain Docker, หรืออื่น) ตรงกับการตัดสินใจ self-hosted/Kubernetes
+- **Reproducibility**: base image pin เวอร์ชันเจาะจง (ไม่ใช้ `latest`/floating) ตาม Dependency rules ของโปรเจกต์
+- **Maintenance**: ทุกครั้งที่ bump Next.js major ต้องเช็ค Node engine requirement ใหม่ (ตอนนี้ >=20.9.0) แล้ว sync base image tag ตาม — ไม่ใช่ one-time decision
+- **Image size**: standalone output + alpine + multi-stage = image เล็กกว่า copy `node_modules` เต็มมาก (ตัวเลขจริงวัดได้ตอน implement เพราะยังไม่เคย build จริงในโปรเจกต์นี้)
+- **สถานะ staging/UAT ไม่ใช่ prod จริง**: Dockerfile นี้ "prod-shaped" (ใช้ image เดิมได้ตอนขึ้น prod จริงในอนาคต) แต่ purpose ปัจจุบันคือ UAT ทดสอบ OIDC BFF login flow จริง (ตาม `login-google-sso` Addendum) บน domain data ที่ยัง mock — ไม่ใช่ตัวชี้วัดว่า "พร้อม prod" ทั้งระบบ
 
 ## Requirement Traceability
 
-| Design element | REQ |
+backfill จาก requirements.md (derive มาจาก design นี้ — ทิศทาง design -> REQ):
+
+| Design element | REQ ที่ตอบสนอง |
 |---|---|
-| Dockerfile multi-stage (`deps`/`builder`/`runner`) | REQ-1.1 |
-| `output: "standalone"` + `node:20-alpine` base | REQ-1.2 |
-| Non-root runtime user (runner stage) | REQ-1.3 |
-| Build fail-fast (non-zero exit, no image on build error) | REQ-1.4 |
-| `EXPOSE 5300` / container port | REQ-2.1 |
-| Same-origin topology, `ADMIN_API_ORIGIN` เว้นว่างใน prod | REQ-2.2 |
-| Env template comment เตือนเรื่อง `ADMIN_API_ORIGIN` | REQ-2.3 |
-| Startup log warning เมื่อ `ADMIN_API_ORIGIN` ถูกตั้งใน prod | REQ-2.4 |
-| `src/app/api/health/route.ts` | REQ-3.1 |
-| Docker `HEALTHCHECK` directive (Node-based poll, ไม่ใช่ curl/wget) | REQ-3.2 |
-| Unhealthy → host restart policy | REQ-3.3 |
-| HEALTHCHECK `start_period` ~10s | REQ-3.4 |
-| Image tag `{version}-{git short SHA}` | REQ-4.1 |
-| `docker-compose.yml` (pol-admin เดี่ยว) | REQ-4.2 |
-| Manual build/tag/run docs (CI ไม่อยู่ใน scope) | REQ-4.3 |
-| `.dockerignore` | REQ-5.1 |
-| ตรวจ image layer ไม่มี `.env*` | REQ-5.2 |
+| `Dockerfile` — `deps` stage (`npm ci`) | REQ-1.1, 1.2, 1.3 |
+| `Dockerfile` — `builder` stage (`next build`, `NODE_ENV=production`) | REQ-1.4, 1.10, 2.1 |
+| `next.config.ts` diff (`output: "standalone"`) | REQ-1.5 |
+| `Dockerfile` — `runner` stage copy (`standalone`+`static`+`public` เท่านั้น) | REQ-1.6, 1.7 |
+| Technology Decisions — base image `node:22-alpine` | REQ-1.8, 1.9 |
+| Data Models — builder stage ไม่ ARG/ENV `NEXT_PUBLIC_SKIP_AUTH` | REQ-2.2 |
+| Error Handling — NEXT_PUBLIC_* freeze-at-build note | REQ-2.3 |
+| Error Handling — `NEXT_PUBLIC_GOOGLE_CLIENT_ID_*` dead (superseded) | REQ-2.4 |
+| `package.json` diff (`sharp` dependency) + updated `package-lock.json` | REQ-3.1, 1.11 |
+| Data Models — `next.config.ts` diff ไม่แตะ `remotePatterns` | REQ-3.2 |
+| `Dockerfile` — `runner` stage non-root user + `chown` ก่อน copy | REQ-4.1, 4.2, 4.3 |
+| `Dockerfile` — `ENV PORT=5200` / `HOSTNAME=0.0.0.0` | REQ-4.4, 4.5 |
+| `Dockerfile` — `HEALTHCHECK` (node inline, ไม่พึ่ง curl/wget) | REQ-4.6, 4.7, 4.8 |
+| `.dockerignore` — exclude `.env*` ยกเว้น `.env.example` | REQ-5.1, 5.2, 5.3 |
+| `Dockerfile` — ไม่มี stage ไหน set `ADMIN_API_ORIGIN` | REQ-5.4 |
+| Testing Strategy — secret-leak inspection check | REQ-5.5 |
+| `.dockerignore` — exclude spec/tooling dirs | REQ-5.6 |
+| Technology Decisions — ไม่มี `docker-compose.yml` | REQ-6.1, 6.2 |
+| Technology Decisions — ไม่แตะ `ci.yml` | REQ-6.3 |
+| Technology Decisions — Dockerfile ไม่ผูก registry | REQ-6.4 |
+
+---
+
+**Open item รอ confirm ตอน /spec-tasks**: exact patch tag ของ `node:22-alpine` และเวอร์ชันจริงของ
+`sharp` ยังไม่ lock (ตั้งใจเว้นไว้ให้ implementation time เพราะ patch version ใหม่กว่าตลอด) — ไม่ใช่ gap
+ของ design แค่จุดที่ resolve ตอนลงมือ.

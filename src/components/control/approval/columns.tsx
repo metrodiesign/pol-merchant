@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { Loader2 } from "lucide-react";
+import { Check, Eye, Loader2, X } from "lucide-react";
 import type { ApprovalRequest } from "@/types/control/approval";
 import { MERCHANT_LABEL } from "@/lib/mock/merchant";
 import {
@@ -12,15 +12,12 @@ import {
 } from "@/lib/control/approval";
 import { formatDateTime } from "@/lib/control/format";
 import { formatTHB } from "@/lib/utils";
-import { StatusSpine } from "@/components/control/shared/status-spine";
 import { ControlStatusBadge } from "@/components/control/shared/status-badge";
-import { Button } from "@/components/ui/button";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from "@/components/ui/tooltip";
+  RowActionButton,
+  RowActionLink,
+  RowActions,
+} from "@/components/control/shared/row-action";
 import "@/types/table-meta";
 
 interface ApprovalColumnsConfig {
@@ -44,17 +41,6 @@ export function approvalColumns({
 }: ApprovalColumnsConfig): ColumnDef<ApprovalRequest>[] {
   return [
     {
-      id: "spine",
-      enableSorting: false,
-      meta: { headClassName: "w-1.5 p-0", cellClassName: "w-1.5 p-0" },
-      header: () => null,
-      cell: ({ row }) => (
-        <div className="flex h-full items-stretch pl-1.5">
-          <StatusSpine tone={statusTone(row.original.status)} />
-        </div>
-      ),
-    },
-    {
       accessorKey: "actionType",
       header: "การดำเนินการ",
       enableSorting: true,
@@ -62,10 +48,10 @@ export function approvalColumns({
         const r = row.original;
         return (
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-foreground">
+            <span className="text-lg font-semibold text-foreground">
               {ACTION_LABEL[r.actionType]}
             </span>
-            <span className="text-data text-xs text-grey-600">{r.target}</span>
+            <span className="text-data text-lg text-grey-600">{r.target}</span>
           </div>
         );
       },
@@ -75,7 +61,7 @@ export function approvalColumns({
       header: "ผู้ขอ",
       enableSorting: true,
       cell: ({ row }) => (
-        <span className="text-data text-xs text-grey-700">
+        <span className="text-data text-lg text-grey-700">
           {row.original.maker}
         </span>
       ),
@@ -87,7 +73,7 @@ export function approvalColumns({
       cell: ({ row }) => {
         const amount = row.original.refAmount;
         return (
-          <span className="text-data text-sm text-foreground">
+          <span className="text-data text-lg text-foreground">
             {amount == null ? "—" : formatTHB(amount)}
           </span>
         );
@@ -98,7 +84,7 @@ export function approvalColumns({
       header: "บริษัท",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-sm text-foreground">
+        <span className="text-lg text-foreground">
           {MERCHANT_LABEL[row.original.merchantId]}
         </span>
       ),
@@ -108,7 +94,7 @@ export function approvalColumns({
       header: "ขอเมื่อ",
       enableSorting: true,
       cell: ({ row }) => (
-        <span className="text-data text-xs text-grey-600">
+        <span className="text-data text-lg text-grey-600">
           {formatDateTime(row.original.requestedAt)}
         </span>
       ),
@@ -127,7 +113,7 @@ export function approvalColumns({
     {
       id: "actions",
       enableSorting: false,
-      meta: { headClassName: "w-[180px]", ignoreRowClick: true },
+      meta: { headClassName: "w-40", cellClassName: "w-40", ignoreRowClick: true },
       header: () => null,
       cell: ({ row }) => {
         const r = row.original;
@@ -138,38 +124,28 @@ export function approvalColumns({
             ? "ไม่สามารถอนุมัติคำขอของตนเอง"
             : "คำขอนี้ดำเนินการแล้ว";
 
-        const buttons = (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
+        return (
+          <RowActions>
+            <RowActionButton
+              label="อนุมัติ"
+              tooltip={allowed ? undefined : reason}
+              icon={busy ? <Loader2 className="size-5 animate-spin" /> : <Check className="size-5" />}
               disabled={!allowed || busy}
               onClick={() => onApprove(r)}
-            >
-              {busy ? <Loader2 className="size-4 animate-spin" /> : "อนุมัติ"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
+            />
+            <RowActionButton
+              label="ปฏิเสธ"
+              tooltip={allowed ? undefined : reason}
+              icon={<X className="size-5" />}
               disabled={!allowed || busy}
               onClick={() => onReject(r)}
-            >
-              ปฏิเสธ
-            </Button>
-          </div>
-        );
-
-        if (allowed) return buttons;
-
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              {/* disabled buttons swallow pointer events — wrap so the tooltip still fires */}
-              <TooltipTrigger render={<span className="inline-flex" />}>
-                {buttons}
-              </TooltipTrigger>
-              <TooltipContent>{reason}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+            />
+            <RowActionLink
+              href={`/control/approvals/read?id=${r.id}`}
+              label="ดูรายละเอียด"
+              icon={<Eye className="size-5" />}
+            />
+          </RowActions>
         );
       },
     },

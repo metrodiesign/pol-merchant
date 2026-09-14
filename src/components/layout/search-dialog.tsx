@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { navConfig } from "./nav-config";
+import type { NavGroup } from "./nav-config";
 
 type FlatItem = {
   title: string;
@@ -21,18 +21,6 @@ type FlatItem = {
   Icon?: React.ComponentType<{ className?: string }>;
   description?: string;
 };
-
-const navItems: FlatItem[] = navConfig.flatMap((group) =>
-  group.items.flatMap((item) => [
-    { title: item.title, path: item.path, group: group.subheader, kind: "nav" as const },
-    ...(item.children?.map((child) => ({
-      title: child.title,
-      path: child.path,
-      group: item.title,
-      kind: "nav" as const,
-    })) ?? []),
-  ]),
-);
 
 const actionItems: FlatItem[] = [
   {
@@ -48,9 +36,10 @@ const actionItems: FlatItem[] = [
 interface SearchDialogProps {
   /** "white" = on coloured topbar (default); "grey" = on transparent topbar */
   variant?: "white" | "grey";
+  groups: readonly NavGroup[];
 }
 
-export function SearchDialog({ variant = "white" }: SearchDialogProps) {
+export function SearchDialog({ variant = "white", groups }: SearchDialogProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const router = useRouter();
@@ -72,10 +61,26 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
     if (!next) setQuery("");
   };
 
+  const navItems: FlatItem[] = useMemo(
+    () =>
+      groups.flatMap((group) =>
+        group.items.flatMap((item) => [
+          { title: item.title, path: item.path, group: group.subheader || "เมนู", kind: "nav" as const },
+          ...(item.children?.map((child) => ({
+            title: child.title,
+            path: child.path,
+            group: item.title,
+            kind: "nav" as const,
+          })) ?? []),
+        ]),
+      ),
+    [groups],
+  );
+
   // Merge nav + action items; action items always shown first when no query
   const allItems: FlatItem[] = useMemo(
     () => [...actionItems, ...navItems],
-    [],
+    [navItems],
   );
 
   const results = useMemo(() => {
@@ -134,7 +139,7 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
       >
         <Search className="size-5 lg:size-5" />
         <kbd className={cn(
-          "hidden h-6 items-center rounded-md px-1.5 text-xs font-bold shadow-none lg:flex",
+          "hidden h-6 items-center rounded-md px-1.5 text-lg font-semibold shadow-none lg:flex",
           isGrey
             ? "bg-grey-500/16 text-grey-600"
             : "bg-white/20 text-white",
@@ -158,9 +163,9 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search..."
-              className="flex-1 bg-transparent text-base text-grey-800 outline-none placeholder:text-grey-500"
+              className="flex-1 bg-transparent text-xl text-grey-800 outline-none placeholder:text-grey-500"
             />
-            <span className="flex h-6 items-center rounded-md bg-grey-500/16 px-1.5 text-xs font-bold text-grey-600">
+            <span className="flex h-6 items-center rounded-md bg-grey-500/16 px-1.5 text-lg font-semibold text-grey-600">
               Esc
             </span>
           </div>
@@ -169,13 +174,13 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
           <SimpleBar autoHide={false} style={{ maxHeight: "60vh" }}>
             <div className="p-2">
               {results.length === 0 ? (
-                <p className="px-3 py-8 text-center text-sm text-grey-500">
+                <p className="px-3 py-8 text-center text-lg text-grey-500">
                   No results found for &ldquo;{query}&rdquo;
                 </p>
               ) : (
                 grouped.map(([section, items]) => (
                   <div key={section}>
-                    <p className="px-4 pb-1 pt-3 text-xs font-semibold uppercase tracking-widest text-grey-500">
+                    <p className="px-4 pb-1 pt-3 text-lg font-semibold uppercase tracking-widest text-grey-500">
                       {section}
                     </p>
                     {items.map((item) => {
@@ -193,20 +198,20 @@ export function SearchDialog({ variant = "white" }: SearchDialogProps) {
                             </span>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-grey-800">
+                            <p className="text-lg font-semibold text-grey-800">
                               {item.title}
                             </p>
                             {item.description ? (
-                              <p className="truncate text-xs text-grey-500">
+                              <p className="truncate text-lg text-grey-500">
                                 {item.description}
                               </p>
                             ) : (
-                              <p className="truncate text-xs text-grey-500">
+                              <p className="truncate text-lg text-grey-500">
                                 {item.path}
                               </p>
                             )}
                           </div>
-                          <span className="flex h-6 shrink-0 items-center rounded-md bg-grey-500/16 px-1.5 text-xs font-bold text-grey-800">
+                          <span className="flex h-6 shrink-0 items-center rounded-md bg-grey-500/16 px-1.5 text-lg font-semibold text-grey-800">
                             {item.group}
                           </span>
                         </button>

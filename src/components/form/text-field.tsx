@@ -22,6 +22,8 @@ interface TextFieldProps {
   endAdornment?: ReactNode;
   className?: string;
   maxLength?: number;
+  autoComplete?: string;
+  spellCheck?: boolean;
 }
 
 export function TextField({
@@ -43,6 +45,8 @@ export function TextField({
   endAdornment,
   className,
   maxLength,
+  autoComplete,
+  spellCheck,
 }: TextFieldProps) {
   const reactId = useId();
   const fieldId = id ?? reactId;
@@ -73,7 +77,7 @@ export function TextField({
       <label
         id={fieldId}
         className={cn(
-          "text-sm font-medium",
+          "text-lg font-medium",
           hasError ? "text-error" : "text-grey-800",
         )}
       >
@@ -102,13 +106,15 @@ export function TextField({
             placeholder={placeholder}
             disabled={disabled}
             maxLength={maxLength}
+            autoComplete={autoComplete}
+            spellCheck={spellCheck}
             aria-invalid={hasError || undefined}
             aria-required={required || undefined}
             aria-describedby={describedBy}
             onChange={(e) => handleChange(e.target.value)}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            className="w-full resize-none bg-transparent px-3.5 py-3 text-sm text-foreground outline-none placeholder:text-grey-500"
+            className="w-full resize-none bg-transparent px-3.5 py-3 text-lg text-foreground outline-none placeholder:text-grey-500"
           />
         ) : (
           <input
@@ -119,6 +125,8 @@ export function TextField({
             placeholder={placeholder}
             disabled={disabled}
             maxLength={maxLength}
+            autoComplete={autoComplete}
+            spellCheck={spellCheck}
             aria-invalid={hasError || undefined}
             aria-required={required || undefined}
             aria-describedby={describedBy}
@@ -126,7 +134,7 @@ export function TextField({
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             className={cn(
-              "h-full w-full bg-transparent px-3.5 text-sm text-foreground outline-none placeholder:text-grey-500",
+              "h-full w-full bg-transparent px-3.5 text-lg text-foreground outline-none placeholder:text-grey-500",
               startAdornment && "pl-2",
             )}
           />
@@ -140,7 +148,7 @@ export function TextField({
       {error || helperText ? (
         <p
           id={descId}
-          className={cn("text-xs", hasError ? "text-error" : "text-grey-600")}
+          className={cn("text-lg", hasError ? "text-error" : "text-grey-600")}
         >
           {error || helperText}
         </p>

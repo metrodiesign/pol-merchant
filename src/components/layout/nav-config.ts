@@ -7,6 +7,8 @@ export interface NavItem {
   badge?: string;
   caption?: string;
   disabled?: boolean;
+  /** ซ่อน item และ descendants เมื่อ effective permission ไม่มี key นี้. */
+  requiredPermission?: string;
   /** When true, the item is considered active on its path AND any sub-paths. */
   deepMatch?: boolean;
   /**
@@ -33,10 +35,31 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+/** คืน configใหม่โดยตัด item/parent/groupที่ผู้ใช้ไม่มีสิทธิ์; ไม่แก้ input. */
+export function filterNavGroups(
+  groups: readonly NavGroup[],
+  permissions: readonly string[],
+): NavGroup[] {
+  const allowed = new Set(permissions);
+
+  const filterItems = (items: readonly NavItem[]): NavItem[] =>
+    items.flatMap((item) => {
+      if (item.requiredPermission && !allowed.has(item.requiredPermission)) return [];
+      const children = item.children ? filterItems(item.children) : undefined;
+      if (item.children && children?.length === 0) return [];
+      return [{ ...item, ...(children ? { children } : {}) }];
+    });
+
+  return groups.flatMap((group) => {
+    const items = filterItems(group.items);
+    return items.length ? [{ ...group, items }] : [];
+  });
+}
+
 export const navConfig: NavGroup[] = [
   // ── Main ─────────────────────────────────────────────────────────────────
   {
-    subheader: "Main",
+    subheader: "", // no label — dashboard sits alone above the first section
     items: [{ title: "แดชบอร์ด", path: "/dashboard", icon: "dashboard" }],
   },
 
@@ -71,15 +94,15 @@ export const navConfig: NavGroup[] = [
     items: [
       {
         title: "ตัวแทน/นายหน้า",
-        path: "/user/list",
+        path: "/merchant/user/list",
         icon: "user",
-        match: "/user",
+        match: "/merchant/user",
       },
       {
         title: "บทบาทและสิทธิ์",
-        path: "/role/list",
+        path: "/merchant/role/list",
         icon: "lock",
-        match: "/role",
+        match: "/merchant/role",
       },
     ],
   },
@@ -103,42 +126,12 @@ export const navConfig: NavGroup[] = [
     ],
   },
 
-  // ── โครงสร้างองค์กร (master data ผูกกับ admin user profile) ────────────────
-  {
-    subheader: "โครงสร้างองค์กร",
-    items: [
-      {
-        title: "สำนักงาน",
-        path: "/organization/office/list",
-        icon: "building",
-        match: "/organization/office",
-      },
-      {
-        title: "แผนก",
-        path: "/organization/division/list",
-        icon: "sitemap",
-        match: "/organization/division",
-      },
-      {
-        title: "ตำแหน่ง",
-        path: "/organization/position/list",
-        icon: "badge",
-        match: "/organization/position",
-      },
-      {
-        title: "ระดับ",
-        path: "/organization/level/list",
-        icon: "ranking",
-        match: "/organization/level",
-      },
-    ],
-  },
 
   // ── Control plane · การเชื่อมต่อ & orchestration ───────────────────────────
   {
     subheader: "Control plane · การเชื่อมต่อ",
     items: [
-      { title: "การเชื่อมต่อ PSP", path: "/control/psp/list", icon: "banking", match: "/control/psp" },
+      { title: "การเชื่อมต่อ PSP", path: "/control/psp/list", icon: "banking", match: "/control/psp", requiredPermission: "settings.manage" },
       { title: "กฎการกำหนดเส้นทาง", path: "/control/routing", icon: "analytics", match: "/control/routing" },
       { title: "ไคลเอนต์ API", path: "/control/api-clients", icon: "lock", match: "/control/api-clients" },
       { title: "Webhooks และเหตุการณ์", path: "/control/webhooks", icon: "folder", match: "/control/webhooks" },

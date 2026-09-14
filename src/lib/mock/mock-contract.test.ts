@@ -4,8 +4,7 @@ import { join } from "path";
 import { PAYMENT_SESSIONS } from "./transactions";
 import { ORDERS } from "./orders";
 import { MERCHANTS } from "./merchant";
-import { MERCHANT_USERS } from "./users";
-import { PSP_CONNECTIONS } from "./control/psp-connections";
+import { MERCHANT_USERS } from "./merchant/users";
 import type { MerchantCode } from "@/types/merchant";
 
 const MONEY_AMOUNT_RE = /^\d+\.\d{4}$/;
@@ -19,9 +18,8 @@ const PAYMENT_SESSION_STATUS_VALUES = ["Created", "Redirected", "Paid", "Failed"
 // รายชื่อไฟล์คือ replacement จริงหลัง implement (tenant->merchant, producer->merchant-user,
 // settlement->reconciliation, transaction->order-payment — ตามที่ REQ-9.6 เองระบุไว้).
 const FORBIDDEN_WORD_ALLOWLIST = [
-  "src/lib/mock/merchant.ts",
-  "src/lib/mock/users.ts",
-  "src/lib/mock/control/psp-connections.ts",
+  "src/lib/mock/merchant/index.ts",
+  "src/lib/mock/merchant/users.ts",
   "src/lib/mock/control/reconciliation.ts",
   "src/lib/mock/transactions.ts",
   "src/lib/mock/orders.ts",
@@ -36,8 +34,8 @@ const FORBIDDEN_WORD_ALLOWLIST = [
   "src/lib/mock/control/originators.ts",
   "src/lib/mock/control/notifications.ts",
   "src/lib/mock/policies.ts",
-  "src/types/merchant.ts",
-  "src/types/user.ts",
+  "src/types/merchant/index.ts",
+  "packages/shared/src/merchant-user.ts",
   "src/types/control/psp-connection.ts",
   "src/types/control/reconciliation.ts",
   "src/types/order-payment.ts",
@@ -66,7 +64,7 @@ const MINIMALS_DEMO_FILES = [
   "topbar",
   "admin/role",
   "admin/users",
-  "role",
+  "merchant/role",
 ];
 
 describe("Money (REQ-9.1, 9.2)", () => {
@@ -147,23 +145,5 @@ describe("Forbidden-word scan (REQ-9.6, 9.6a)", () => {
   it("the scan actually catches an injected forbidden word (meta-test, REQ-9.9)", () => {
     const injected = "export const X = { status: \"disabled\" };".toLowerCase();
     expect(FORBIDDEN_WORDS.some((w) => injected.includes(w.toLowerCase()))).toBe(true);
-  });
-});
-
-describe("No plaintext secrets (REQ-9.7, 5.1)", () => {
-  it("psp-connections.ts has no secretKey/webhookSecret/publicKey field", () => {
-    const content = readFileSync(
-      join(process.cwd(), "src/lib/mock/control/psp-connections.ts"),
-      "utf-8",
-    );
-    expect(content).not.toMatch(/secretKey|webhookSecret|publicKey/i);
-  });
-
-  it("no PSP connection exposes an unmasked secret value", () => {
-    for (const conn of PSP_CONNECTIONS) {
-      for (const value of Object.values(conn.maskedSecrets)) {
-        expect(value).toMatch(/•/);
-      }
-    }
   });
 });

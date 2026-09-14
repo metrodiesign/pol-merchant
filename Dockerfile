@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1
 
 FROM node:22.19.0-alpine3.22 AS base
-RUN npm install -g npm@11.12.1
 
 # ---- deps: install dependencies only ----
 FROM base AS deps
@@ -11,18 +10,23 @@ RUN apk add --no-cache libc6-compat
 # against the registry's current latest matching version instead of skipping the optional
 # peer, so a correct lockfile is rejected (EUSAGE). npm 11.12.1 (the version that generated
 # this lockfile) does not have this bug. Pinned exact, not floating.
+RUN npm install -g npm@11.12.1
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY packages/ui/package.json ./packages/ui/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
 RUN npm ci
 
-# ---- builder: build Merchant ----
+# ---- builder: build root Admin app ----
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app ./
 COPY . .
 
-# ไม่กำหนด ADMIN_API_ORIGIN ตอน build/runtime: production ใช้ same-origin reverse proxy
-# และ source next.config.ts ไม่สร้าง rewrite เมื่อ variable ไม่มีค่า
+# NEXT_PUBLIC_* ใด ๆ ที่ต้องการต้อง ARG/ENV ก่อนบรรทัด build นี้ (ค่า inline เข้า JS bundle
+# ตอน build เท่านั้น) — NEXT_PUBLIC_API_ORIGIN ตั้งใจไม่ ARG/ENV ที่นี่: ปล่อยว่าง = "" ตอน build,
+# login()/microsoftLogin() จึง navigate ด้วย relative path (same-origin, ตรงกับที่ reverse proxy
+# เสิร์ฟ SPA+API origin เดียวกันใน prod). NEXT_PUBLIC_GOOGLE_CLIENT_ID_* เป็นของเก่าที่ dead แล้ว.
 ENV NODE_ENV=production
 RUN npm run build
 
@@ -33,6 +37,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3002
 ENV HOSTNAME=0.0.0.0
+# ADMIN_API_ORIGIN: ตั้งใจไม่ set — Admin next.config.ts rewrites() คืน [] เมื่อไม่ set
+# (reverse proxy เสิร์ฟ SPA+API origin เดียวกันอยู่แล้วใน prod)
 
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
@@ -46,6 +52,6 @@ USER nextjs
 EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3002,path:'/'},r=>{const ok=r.statusCode===307&&r.headers.location==='/dashboard';r.resume();r.on('end',()=>process.exit(ok?0:1))}).on('error',()=>process.exit(1))"
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||3002)+'/', r=>{process.exit(r.statusCode<500?0:1)}).on('error',()=>process.exit(1))"
 
 CMD ["node", "server.js"]

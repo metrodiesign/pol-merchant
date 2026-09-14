@@ -6,9 +6,53 @@
 This project practices STRICT spec-driven development: **specifications come before
 code, ALWAYS**. Do not jump to implementation for any non-trivial feature.
 
+## ภาษาของผลลัพธ์
+
+ทุก `spec-*` และทุก harness ใช้นโยบายนี้ร่วมกัน: สร้างหรือแก้ข้อความอธิบายเป็นภาษาไทย
+ทั้ง requirements (ความต้องการของผู้ใช้และเกณฑ์การยอมรับ), design, tasks, bugfix,
+implementation plan, review/test report, handoff, retro, ชื่อและเนื้อหา issue ที่ sync
+รวมถึงข้อความที่สื่อสารกับผู้ใช้
+
+ใช้กับ `requirements.md`, `design.md`, `tasks.md`, `handoff.md` และเอกสารประกอบที่สร้างใหม่
+โดยแปล placeholder และตัวอย่างข้อความสำหรับผู้อ่านในต้นทางด้วย เพื่อให้ template นำไปใช้ได้ตรงนโยบาย
+
+template ภาษาอังกฤษกำหนดโครงสร้าง ไม่ใช่ภาษาของผลลัพธ์ เติมชื่อ feature/task และเนื้อหา
+เป็นภาษาไทย ใน requirements ให้ใช้หัวข้อและรูปประโยคไทยตาม EARS.md รวมคำว่า
+“เมื่อ… ระบบต้อง…” แทนคำเชื่อมอังกฤษ อธิบายด้วยคำไทยทั่วไปโดยไม่แทรกศัพท์อังกฤษที่แปลได้
+เอกสารอื่นคงเฉพาะหัวข้อที่ตัวตรวจอ้างถึงตามตารางด้านล่าง ส่วนหัวข้อที่ตั้งเองใช้ภาษาไทย
+เมื่อแก้ spec เดิม ให้ปรับข้อความเฉพาะ scope งาน ไม่แปลเอกสารเก่าย้อนหลังทั้งชุด
+
+| ส่วน | สิ่งที่คงเดิม |
+|---|---|
+| ข้อมูลทางเทคนิค | code, identifier, command, path และ raw error/log; คำอธิบายใช้ภาษาไทย |
+| Requirement | REQ-ID / F-ID / B-ID; เขียนประโยคใหม่เป็นภาษาไทย ตัวตรวจยังรองรับประโยคอังกฤษในเอกสารเก่า |
+| สถานะและ schema | `Status:` พร้อมค่า enum เดิม, schema keys และ checkbox syntax |
+| Task metadata | `Satisfies:`, `Depends on:`, `Verify:`, `Batch:` และ `Evidence:` พร้อม keys ภายใน |
+| โครงเอกสาร | หัวข้อที่ตัวอ่านใช้ เช่น `## REQ-N:` และ `## Requirement Traceability` พร้อมคอลัมน์ Design element, REQ, Section |
+
+ค่าในคอลัมน์ `Section` ต้องตรงกับ heading จริงที่อ้างอิง แม้ heading นั้นเป็นภาษาไทย
+
+ตัวอย่างรูปแบบภาษาไทย (task ยังไม่เสร็จ; ไม่ใช่หลักฐานว่า test ผ่าน):
+
+```markdown
+## REQ-1: การบันทึกฉบับร่าง
+**เกณฑ์การยอมรับ:**
+- 1.1 เมื่อผู้ใช้กดบันทึก ระบบต้องบันทึกเนื้อหาปัจจุบันเป็นฉบับร่าง
+
+- [ ] 1. บันทึกฉบับร่าง — ผู้ใช้เรียกคืนเนื้อหาที่บันทึกไว้ได้
+  Satisfies: REQ-1.1. Verify: ทดสอบบันทึกแล้วโหลดกลับและเปรียบเทียบเนื้อหา.
+```
+
+รายการงานใช้ระยะเยื้องสองช่องสำหรับข้อความภายในงาน เว้นบรรทัดก่อนและหลัง `Evidence:`
+แล้วแสดงผลตรวจเป็นรายการย่อยตาม [ตัวอย่างหลักฐาน](TESTING_PROTOCOL.md#evidence-block-format)
+คงข้อมูลอ้างอิงและวิธีตรวจติดกับบรรทัดงาน เพื่อให้ตัวอ่านยังจับคู่ได้ ตรวจทั้งผลที่แสดงและผลตัวอ่านก่อนส่งมอบ
+
+ก่อนส่งมอบ อ่านผลลัพธ์ซ้ำ: เนื้อหาที่สร้างหรือแก้เป็นภาษาไทย, machine contract คงเดิม,
+traceability อ้างอิงได้จริง และ Evidence ระบุเฉพาะคำสั่งกับผลที่รันและสังเกตจริง
+
 ## The non-negotiable workflow
 
-Every feature flows through three artifacts under `specs/<feature-name>/`, IN ORDER,
+Every feature flows through three artifacts under `.claude/specs/<feature-name>/`, IN ORDER,
 with an **APPROVAL GATE** after each:
 
 1. `requirements.md` — WHAT the system must do (behavior, in [EARS notation](EARS.md))
@@ -50,7 +94,13 @@ Size tasks as **cohesive, independently verifiable slices of behavior — NOT
 micro-steps.** Assume you can hold the whole feature in context and implement a
 complete task end-to-end in one pass, even when it spans many files.
 
-- A typical feature is about **5-10 tasks, not 20-30**.
+- Task count is an outcome, not a quota. Many features land around **5-10 tasks**,
+  but there is no minimum or maximum at the spec level.
+- If the count exceeds 10, review whether the feature is too broad or tasks are
+  micro-steps. Keep any count when every task remains cohesive, independently
+  verifiable, traceable to requirements, and feasible to implement and verify in one
+  pass. Never split cohesive behavior or merge unrelated behaviors solely to hit a
+  target count.
 - Do NOT pre-split a task into `1.1` / `1.2` sub-steps inside `tasks.md`. Decompose
   into working steps yourself at execution time using your own internal TODO list.
 - Prefer **vertical slices** (model -> API -> validation -> tests) over horizontal
@@ -69,8 +119,10 @@ complete task end-to-end in one pass, even when it spans many files.
 3. **Identify affected files** — list every file you expect to create or edit. The
    filesystem is ground truth; checkboxes and git log can lie, and untracked files do
    not appear in `git diff --stat`. Reconcile `tasks.md` against reality first.
-4. **Plan** — an internal TODO list for the whole task. State a brief plan with a
-   verify check per step.
+4. **Plan** — จัดทำ task-level implementation plan โดยใช้โครง canonical ใน
+   [OUTPUT_FORMATS.md](OUTPUT_FORMATS.md) และ
+   [implementation plan template](../templates/implementation-plan-template.md) แบบกรอกข้อมูลได้ คง
+   execution steps เป็นรายละเอียดการทำงานภายใน approved cohesive task.
 5. **Minimal change** — implement the WHOLE task in one cohesive pass. Touch only what
    the task requires. Match existing conventions exactly.
 6. **Tests** — write or extend tests proving the task satisfies its IDs. See
@@ -84,6 +136,22 @@ complete task end-to-end in one pass, even when it spans many files.
    [CONTEXT_MANAGEMENT.md](CONTEXT_MANAGEMENT.md).
 9. **Risks** — surface anything risky, deferred, or assumed in the summary (and a risk
    report when warranted — see [OUTPUT_FORMATS.md](OUTPUT_FORMATS.md)).
+
+### Planning contract
+
+task-level implementation plan ต้องระบุเป้าหมายและ `REQ-ID`/`F-ID`/`B-ID` ที่เชื่อมโยง,
+scope boundary, ไฟล์ที่ได้รับผลกระทบพร้อมสิ่งที่จะทำและเหตุผล, load-bearing decisions,
+reuse anchors, dependency-ordered steps พร้อม executable verification รวมถึง blockers,
+open questions หรือ assumptions ทั้งหมด เพิ่ม risks เฉพาะเมื่อเกี่ยวข้อง ใช้โครง plan ใน
+[OUTPUT_FORMATS.md](OUTPUT_FORMATS.md), กรอก
+[implementation plan template](../templates/implementation-plan-template.md) และให้รายละเอียด
+ด้าน test และ security เป็นไปตาม [TESTING_PROTOCOL.md](TESTING_PROTOCOL.md) และ
+[SECURITY_RULES.md](SECURITY_RULES.md)
+
+Execution steps เป็น working detail ภายใน approved cohesive task เดียว ส่วน review, checkbox
+และ `Evidence:` ยังคงอยู่ที่ task boundary หาก plan มี migration, destructive หรือ
+irreversible operation หรือ breaking external contract ให้บันทึก rollback และ recovery,
+compatibility impact และ affected consumers ตาม owner docs ข้างต้น
 
 Pause for confirmation at each TASK boundary (not after every file). Implement several
 tasks in one go only when explicitly asked (a range or "all"), proceeding in

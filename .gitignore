@@ -20,3 +20,4 @@ certificates/
 
 # OS junk
 .DS_Store
+.pipeline/
