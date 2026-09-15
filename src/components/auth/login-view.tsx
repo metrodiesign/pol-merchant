@@ -3,11 +3,8 @@
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import { beginLogin } from "@/lib/api/admin/auth";
+import { beginAgentLogin } from "@/lib/api/merchant/auth";
 import { merchantUserMicrosoftLogin } from "@/lib/api/merchant/user";
-
-// landing หลัง login = /dashboard (admin landing จริง) — SPA เก็บ returnTo เองคู่ PKCE state (API ไม่รับ returnTo)
-const RETURN_TO = "/dashboard";
 
 // โลโก้ Microsoft (4 สี่เหลี่ยมมาตรฐาน)
 function MicrosoftIcon() {
@@ -67,15 +64,15 @@ export function LoginView() {
       <div className="flex flex-1 items-start justify-center px-4 py-12">
         <div className="grid w-full max-w-3xl grid-cols-1 gap-4 md:grid-cols-2">
           <section
-            aria-label="สำหรับพนักงาน"
+            aria-label="ตัวแทนที่ลงทะเบียนแล้ว"
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
-            <h2 className="text-center text-2xl font-semibold text-white">สำหรับพนักงาน</h2>
+            <h2 className="text-center text-2xl font-semibold text-white">ตัวแทนที่ลงทะเบียนแล้ว</h2>
             <Button
               type="button"
               size="lg"
               className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => void beginLogin(RETURN_TO)}
+              onClick={() => void beginAgentLogin()}
             >
               <MicrosoftIcon />
               เข้าสู่ระบบด้วย Microsoft
@@ -83,10 +80,10 @@ export function LoginView() {
           </section>
 
           <section
-            aria-label="สำหรับตัวแทน/นายหน้า"
+            aria-label="ลงทะเบียนตัวแทนใหม่"
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
-            <h2 className="text-center text-2xl font-semibold text-white">สำหรับตัวแทน/นายหน้า</h2>
+            <h2 className="text-center text-2xl font-semibold text-white">ลงทะเบียนตัวแทนใหม่</h2>
             <Button
               type="button"
               size="lg"
@@ -94,7 +91,7 @@ export function LoginView() {
               onClick={() => merchantUserMicrosoftLogin()}
             >
               <MicrosoftIcon />
-              เข้าสู่ระบบด้วย Microsoft
+              ลงทะเบียนด้วย Microsoft
             </Button>
           </section>
         </div>

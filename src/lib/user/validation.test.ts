@@ -107,6 +107,14 @@ describe("validateMerchantUserForm", () => {
   it("flags bad email (5.6)", () => {
     expect(validateMerchantUserForm({ ...base, email: "nope" }).email).toBeDefined();
   });
+  it("saleCode ≤64: รับ DEMO-SALE-1 (11 ตัว) และความยาว 64; ปฏิเสธ >64 (canonical §2.1)", () => {
+    expect(validateMerchantUserForm({ ...base, producerCode: "DEMO-SALE-1" }).producerCode).toBeUndefined();
+    expect(validateMerchantUserForm({ ...base, producerCode: "x".repeat(64) }).producerCode).toBeUndefined();
+    expect(validateMerchantUserForm({ ...base, producerCode: "x".repeat(65) }).producerCode).toBeDefined();
+  });
+  it("saleCode cap ไม่ผูก personType (Individual รับ >10 ได้แล้ว)", () => {
+    expect(validateMerchantUserForm({ ...base, personType: "Individual", producerCode: "DEMO-SALE-1" }).producerCode).toBeUndefined();
+  });
   it("flags missing required fields (5.7)", () => {
     const errs = validateMerchantUserForm({ ...base, firstName: "", producerCode: "" });
     expect(errs.firstName).toBeDefined();
@@ -128,8 +136,8 @@ describe("validateRegisterForm (REQ-11.6)", () => {
   it("passes a valid registration form", () => {
     expect(validateRegisterForm(regBase)).toEqual({});
   });
-  it("photo not required (temporarily disabled)", () => {
-    expect(validateRegisterForm({ ...regBase, photo: null }).photo).toBeUndefined();
+  it("photo required: null photo -> error (REQ-11.6, canonical contract)", () => {
+    expect(validateRegisterForm({ ...regBase, photo: null }).photo).toBeDefined();
   });
   it("requires acceptTerms (registration always opts in)", () => {
     expect(validateRegisterForm({ ...regBase, acceptTerms: false }).acceptTerms).toBeDefined();

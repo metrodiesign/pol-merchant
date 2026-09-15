@@ -19,6 +19,7 @@ import {
   type PersonType,
 } from "@/types/user";
 import {
+  SALE_CODE_MAX,
   validateMerchantUserForm,
   validateRegisterForm,
   type MerchantUserFormErrors,
@@ -200,7 +201,7 @@ export function MerchantUserEditFormCard({
           <TextField
             label="รหัสตัวแทน"
             required
-            maxLength={form.personType === "Individual" ? 10 : 20}
+            maxLength={SALE_CODE_MAX}
             value={form.producerCode}
             onChange={(v) => update("producerCode", v)}
             error={errors.producerCode}
