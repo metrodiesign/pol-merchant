@@ -37,6 +37,9 @@ export function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value);
 }
 
+/** เพดาน saleCode ฝั่ง canonical (design §2.1) — client cap ตรงกับ server contract. */
+export const SALE_CODE_MAX = 64;
+
 export type MerchantUserFormErrors = Partial<Record<keyof MerchantUserFormData, string>>;
 
 /**
@@ -59,10 +62,9 @@ export function validateMerchantUserForm(
 
   if (!form.producerCode.trim()) {
     errors.producerCode = "กรุณากรอกรหัสตัวแทน";
-  } else {
-    const maxCode = form.personType === "Individual" ? 10 : 20;
-    if (form.producerCode.length > maxCode)
-      errors.producerCode = `รหัสตัวแทนต้องไม่เกิน ${maxCode} ตัวอักษร`;
+  } else if (form.producerCode.length > SALE_CODE_MAX) {
+    // canonical: producerCode -> saleCode (≤64) ตรวจกับ Sale จริงตอน submit เท่านั้น (design §2.1)
+    errors.producerCode = `รหัสตัวแทนต้องไม่เกิน ${SALE_CODE_MAX} ตัวอักษร`;
   }
 
   if (!isValidLicense(form.personType, form.licenseNumber))
@@ -93,5 +95,9 @@ export type RegisterFormErrors = Partial<
 export function validateRegisterForm(
   form: MerchantUserRegisterFormData,
 ): RegisterFormErrors {
-  return validateMerchantUserForm(form, { requireAcceptTerms: true });
+  const errors: RegisterFormErrors = validateMerchantUserForm(form, {
+    requireAcceptTerms: true,
+  });
+  if (!form.photo) errors.photo = "กรุณาแนบรูปถ่ายตัวแทน";
+  return errors;
 }

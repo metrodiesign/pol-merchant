@@ -32,6 +32,22 @@ const REASON_MESSAGES: Readonly<Record<string, string>> = {
   "account-suspended": "บัญชีถูกระงับการใช้งาน ติดต่อผู้ดูแลระบบ",
   "identity-account-type-conflict":
     "identity นี้ผูกกับบัญชีประเภทอื่นอยู่แล้ว กรุณาติดต่อผู้ดูแลระบบ",
+  // agent (ตัวแทน) canonical stack — reason จาก HumanIdentityPolicy / RegistrationSessionService (design §6)
+  "provider-not-allowed":
+    "ผู้ให้บริการยืนยันตัวตนนี้ไม่ได้รับอนุญาต กรุณาใช้บัญชีขององค์กรที่กำหนด",
+  "signature-invalid": "การยืนยันตัวตนไม่ถูกต้อง (ลายเซ็นไม่ผ่าน) กรุณาลองใหม่",
+  "lifetime-invalid": "การยืนยันตัวตนหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง",
+  "state-invalid": "เซสชันการเข้าสู่ระบบไม่ถูกต้อง กรุณาเริ่มเข้าสู่ระบบใหม่",
+  "nonce-invalid": "เซสชันการเข้าสู่ระบบไม่ถูกต้อง กรุณาเริ่มเข้าสู่ระบบใหม่",
+  "registration-identity-not-agent":
+    "บัญชีนี้ไม่ใช่บัญชีตัวแทนที่ได้รับอนุญาต กรุณาติดต่อผู้ดูแลระบบ",
+  "account-already-approved": "บัญชีนี้ได้รับการอนุมัติแล้ว กรุณาเข้าสู่ระบบ",
+  "agent-account-suspended": "บัญชีตัวแทนถูกระงับการใช้งาน ติดต่อผู้ดูแลระบบ",
+  // FE-minted จากหน้า /register (design §6)
+  "registration-session-expired":
+    "เซสชันการลงทะเบียนหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อลงทะเบียนต่อ",
+  "registration-merchant-mismatch":
+    "ข้อมูลการลงทะเบียนไม่ตรงกับร้านค้าของบัญชีนี้ กรุณาติดต่อผู้ดูแลระบบ",
 };
 
 const DEFAULT_MESSAGE = "เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่";
@@ -43,9 +59,14 @@ export function getLoginErrorContent(reason?: string): LoginErrorContent {
     return { title: "รอการอนุมัติ", message: PENDING_MESSAGE, isPending: true };
   }
 
+  // ใช้ Object.hasOwn กัน key ของ prototype (เช่น ?reason=__proto__/toString) คืน object/ฟังก์ชันแทนข้อความ
+  const message =
+    reason && Object.hasOwn(REASON_MESSAGES, reason)
+      ? REASON_MESSAGES[reason] ?? DEFAULT_MESSAGE
+      : DEFAULT_MESSAGE;
   return {
     title: "เข้าสู่ระบบไม่สำเร็จ",
-    message: (reason && REASON_MESSAGES[reason]) || DEFAULT_MESSAGE,
+    message,
     isPending: false,
   };
 }

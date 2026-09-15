@@ -75,15 +75,15 @@ export function AvatarUpload({
       <input
         ref={inputRef}
         type="file"
-        accept=".jpeg,.jpg,.png,.gif"
+        accept=".jpeg,.jpg,.png,.webp"
         className="hidden"
         onChange={handleChange}
       />
       {!hideHint && (
         <p className="mt-4 text-center text-xs leading-relaxed text-grey-500">
-          Allowed *.jpeg, *.jpg, *.png, *.gif
+          Allowed *.jpeg, *.jpg, *.png, *.webp
           <br />
-          max size of 3 Mb
+          max size of 2 Mb
         </p>
       )}
     </div>
