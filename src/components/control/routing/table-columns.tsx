@@ -1,12 +1,19 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { ArrowUp, ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowRight, Eye } from "lucide-react";
 import type { RoutingRule } from "@/types/control/routing-rule";
 import { MERCHANT_LABEL } from "@/lib/mock/merchant";
 import { CHANNEL_LABEL, PSP_LABEL, enabledTone } from "@/lib/control/routing";
 import { formatTHB } from "@/lib/utils";
 import { ControlStatusBadge } from "@/components/control/shared/status-badge";
+import {
+  RowActionButton,
+  RowActionLink,
+  RowActions,
+} from "@/components/control/shared/row-action";
+import { controlBadgeClass } from "@/components/control/shared/styles";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import "@/types/table-meta";
 
@@ -36,7 +43,7 @@ export function routingColumns({
       enableSorting: false,
       meta: { headClassName: "w-16", cellClassName: "w-16" },
       cell: ({ row }) => (
-        <span className="text-data text-sm font-semibold text-grey-700">
+        <span className="text-data text-lg font-semibold text-grey-700">
           #{row.original.priority}
         </span>
       ),
@@ -46,7 +53,7 @@ export function routingColumns({
       header: "บริษัท",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-sm text-foreground">
+        <span className="text-lg text-foreground">
           {MERCHANT_LABEL[row.original.merchantId]}
         </span>
       ),
@@ -56,9 +63,9 @@ export function routingColumns({
       header: "ช่องทาง",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-sm font-semibold text-foreground">
+        <Badge variant="outline" className={controlBadgeClass}>
           {CHANNEL_LABEL[row.original.channel]}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -66,7 +73,7 @@ export function routingColumns({
       header: "ช่วงจำนวนเงิน",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-data text-xs text-grey-700">
+        <span className="text-data text-lg text-grey-700">
           {amountRange(row.original)}
         </span>
       ),
@@ -76,9 +83,9 @@ export function routingColumns({
       header: "PSP ปลายทาง",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+        <Badge variant="secondary" className={controlBadgeClass}>
           {PSP_LABEL[row.original.targetPsp]}
-        </span>
+        </Badge>
       ),
     },
     {
@@ -87,12 +94,12 @@ export function routingColumns({
       enableSorting: false,
       cell: ({ row }) =>
         row.original.fallbackPsp ? (
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-grey-600">
+          <Badge variant="outline" className={`${controlBadgeClass} text-grey-600`}>
             <ArrowRight className="size-3.5 text-grey-500" />
             {PSP_LABEL[row.original.fallbackPsp]}
-          </span>
+          </Badge>
         ) : (
-          <span className="text-xs text-grey-500">—</span>
+          <span className="text-lg text-grey-500">—</span>
         ),
     },
     {
@@ -118,29 +125,28 @@ export function routingColumns({
       },
     },
     {
-      id: "reorder",
+      id: "actions",
       header: () => null,
       enableSorting: false,
-      meta: { headClassName: "w-20", cellClassName: "w-20", ignoreRowClick: true },
+      meta: { headClassName: "w-40", cellClassName: "w-40", ignoreRowClick: true },
       cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="เลื่อนลำดับขึ้น"
+        <RowActions>
+          <RowActionButton
+            label="เลื่อนลำดับขึ้น"
+            icon={<ArrowUp className="size-5" />}
             onClick={() => onMoveUp(row.original)}
-            className="inline-flex size-7 items-center justify-center rounded-lg text-grey-600 transition-colors hover:bg-[var(--action-hover)] hover:text-foreground"
-          >
-            <ArrowUp className="size-4" />
-          </button>
-          <button
-            type="button"
-            aria-label="เลื่อนลำดับลง"
+          />
+          <RowActionButton
+            label="เลื่อนลำดับลง"
+            icon={<ArrowDown className="size-5" />}
             onClick={() => onMoveDown(row.original)}
-            className="inline-flex size-7 items-center justify-center rounded-lg text-grey-600 transition-colors hover:bg-[var(--action-hover)] hover:text-foreground"
-          >
-            <ArrowDown className="size-4" />
-          </button>
-        </div>
+          />
+          <RowActionLink
+            href={`/control/routing/read?id=${row.original.id}`}
+            label="ดูรายละเอียด"
+            icon={<Eye className="size-5" />}
+          />
+        </RowActions>
       ),
     },
   ];

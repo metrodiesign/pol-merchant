@@ -2,33 +2,40 @@
   "name": "pol-merchant",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/ui",
+    "packages/shared"
+  ],
   "engines": {
-    "node": "22.19.0"
+    "node": ">=22.19.0"
   },
   "packageManager": "npm@11.12.1",
   "scripts": {
-    "dev": "next dev -p 3002 --experimental-https",
+    "dev": "node --require=./scripts/dev-tls-ca.cjs ./node_modules/next/dist/bin/next dev -p 3002 --experimental-https",
     "dev:clean": "node -e \"const fs=require('node:fs'); for (const path of ['.next','tsconfig.tsbuildinfo']) fs.rmSync(path,{recursive:true,force:true})\" && npm run dev",
     "build": "next build",
-    "start": "next start -p 3002",
-    "audit:production": "node scripts/check-production-audit.mjs",
-    "lint": "eslint .",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "start": "node --require=./scripts/dev-tls-ca.cjs ./node_modules/next/dist/bin/next start -p 3002",
+    "test": "node --test scripts/lib/workspace-verification.test.mjs scripts/psp-contract-server.test.mjs && vitest run && npm run test --workspaces --if-present",
+    "lint": "eslint src next.config.ts postcss.config.mjs vitest.config.ts && npm run lint --workspaces --if-present",
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present",
+    "verify:workspaces": "node scripts/verify-workspaces.mjs",
+    "smoke:routes": "node scripts/smoke-workspace-routes.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
+    "@pol/shared": "0.1.0",
+    "@pol/ui": "0.1.0",
     "@tanstack/react-table": "^8.21.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
-    "next": "16.3.1",
+    "next": "16.3.4",
     "react": "19.2.4",
     "react-day-picker": "^9.14.0",
     "react-dom": "19.2.4",
     "react-qr-code": "^2.2.0",
     "recharts": "^3.8.1",
-    "sharp": "0.35.3",
+    "sharp": "0.35.4",
     "simplebar": "^6.3.3",
     "simplebar-react": "^3.3.2",
     "tailwind-merge": "^3.6.0",
@@ -40,7 +47,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.1",
+    "eslint-config-next": "16.2.6",
     "shadcn": "4.8.0",
     "tailwindcss": "^4",
     "typescript": "^5",

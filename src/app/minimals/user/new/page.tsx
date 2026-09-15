@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { PageHeader } from "@/components/shared/page-header";
-import { AvatarUpload } from "@/components/shared/avatar-upload";
-import { Fieldset, Field, Label, Description } from "@/components/shared/fieldset";
+import { AvatarUpload } from "@pol/ui/avatar-upload";
+import { Fieldset, Field, Label, Description } from "@pol/ui/fieldset";
 import { Switch } from "@/components/ui/switch";
 import { UserEditFormCard } from "@/components/dashboard/user/user-edit-form-card";
 
@@ -36,7 +36,7 @@ export default function UserCreatePage() {
               <div className="space-y-5">
                 <Field className="flex-row items-start justify-between gap-4">
                   <div>
-                    <Label className="text-sm font-semibold">Email verified</Label>
+                    <Label className="text-lg font-semibold">Email verified</Label>
                     <Description>
                       Disabling this will automatically send the user a verification email
                     </Description>

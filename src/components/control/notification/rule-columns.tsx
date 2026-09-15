@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { NotificationRule } from "@/types/control/notification";
 import { MERCHANT_LABEL } from "@/lib/mock/merchant";
 import { CHANNEL_LABEL, eventLabel } from "@/lib/control/notification";
+import { controlBadgeClass } from "@/components/control/shared/styles";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import "@/types/table-meta";
@@ -23,7 +24,7 @@ export function buildNotificationRuleColumns(
       header: "เหตุการณ์",
       enableSorting: true,
       cell: ({ row }) => (
-        <span className="text-sm font-semibold text-foreground">
+        <span className="text-lg font-semibold text-foreground">
           {eventLabel(row.original.event)}
         </span>
       ),
@@ -33,7 +34,7 @@ export function buildNotificationRuleColumns(
       header: "ช่องทาง",
       enableSorting: false,
       cell: ({ row }) => (
-        <Badge variant="secondary">{CHANNEL_LABEL[row.original.channel]}</Badge>
+        <Badge variant="secondary" className={controlBadgeClass}>{CHANNEL_LABEL[row.original.channel]}</Badge>
       ),
     },
     {
@@ -41,7 +42,7 @@ export function buildNotificationRuleColumns(
       header: "ปลายทาง",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-data text-xs text-grey-700">
+        <span className="text-data text-lg text-grey-700">
           {row.original.target}
         </span>
       ),
@@ -52,7 +53,7 @@ export function buildNotificationRuleColumns(
       enableSorting: false,
       cell: ({ row }) =>
         row.original.threshold ? (
-          <span className="text-data text-xs text-grey-600">
+          <span className="text-data text-lg text-grey-600">
             {row.original.threshold}
           </span>
         ) : (
@@ -64,7 +65,7 @@ export function buildNotificationRuleColumns(
       header: "บริษัท",
       enableSorting: false,
       cell: ({ row }) => (
-        <span className="text-sm text-foreground">
+        <span className="text-lg text-foreground">
           {MERCHANT_LABEL[row.original.merchantId]}
         </span>
       ),

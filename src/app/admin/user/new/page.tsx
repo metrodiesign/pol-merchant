@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader } from "@/components/shared/page-header";
-import { AvatarUpload } from "@/components/shared/avatar-upload";
+import { AvatarUpload } from "@pol/ui/avatar-upload";
 import { UserEditFormCard } from "@/components/admin/user/edit-form-card";
 
 export default function UserCreatePage() {

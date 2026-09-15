@@ -18,7 +18,8 @@ import { PSP_LABEL, DELIVERY_LABEL } from "@/lib/control/webhook";
 import { MERCHANT_LABEL } from "@/lib/mock/merchant";
 import { useDataTable } from "@/hooks/use-data-table";
 import { DataTable } from "@/components/table/data-table";
-import { ControlListToolbar } from "@/components/control/shared/list-toolbar";
+import { cardStyle } from "@/components/control/shared/styles";
+import { ControlToolbar } from "@/components/control/shared/toolbar";
 import { webhookColumns } from "./columns";
 import "@/types/table-meta";
 
@@ -29,22 +30,19 @@ function EndpointCard({
   failedToday,
 }: (typeof WEBHOOK_ENDPOINTS)[number]) {
   return (
-    <div
-      className="flex flex-col gap-3 rounded-2xl bg-card p-5"
-      style={{ boxShadow: "var(--shadow-card)" }}
-    >
-      <p className="text-sm font-semibold text-grey-600">
+    <div className="flex flex-col gap-3 rounded-card bg-card p-6" style={cardStyle}>
+      <p className="text-lg font-semibold text-grey-600">
         {MERCHANT_LABEL[merchantId]}
       </p>
-      <p className="text-data text-xs break-all text-grey-700">{url}</p>
+      <p className="text-data text-lg break-all text-grey-700">{url}</p>
       <div className="flex items-center gap-4">
-        <span className="text-sm font-semibold text-success-dark">
+        <span className="text-lg font-semibold text-success-dark">
           {deliveredToday} สำเร็จ
         </span>
-        <span className="text-sm font-semibold text-error-dark">
+        <span className="text-lg font-semibold text-error-dark">
           {failedToday} ล้มเหลว
         </span>
-        <span className="text-xs text-grey-500">วันนี้</span>
+        <span className="text-lg text-grey-500">วันนี้</span>
       </div>
     </div>
   );
@@ -135,7 +133,7 @@ export function WebhooksView() {
 
       <div className="flex items-start gap-2 rounded-xl border border-info/30 bg-info/8 px-4 py-3">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-info" />
-        <p className="text-sm text-grey-700">
+        <p className="text-lg text-grey-700">
           Webhook คือแหล่งความจริงของสถานะการชำระเงิน —
           สถานะทั้งหมดอ้างอิงจาก event ที่ยืนยันแล้ว
         </p>
@@ -145,13 +143,15 @@ export function WebhooksView() {
         className="overflow-hidden rounded-2xl bg-card"
         style={{ boxShadow: "var(--shadow-card)" }}
       >
-        <ControlListToolbar
-          search={search}
-          onSearchChange={(v) => {
-            setSearch(v);
-            resetPage();
+        <ControlToolbar
+          search={{
+            value: search,
+            onChange: (v) => {
+              setSearch(v);
+              resetPage();
+            },
+            placeholder: "ค้นหา event id, ประเภท event...",
           }}
-          searchPlaceholder="ค้นหา event id, ประเภท event..."
           filters={[
             {
               label: "บริษัท",
@@ -190,6 +190,14 @@ export function WebhooksView() {
               })),
             },
           ]}
+          rowsPerPage={{
+            value: table.getState().pagination.pageSize,
+            onChange: (n) => {
+              table.setPageSize(n);
+              resetPage();
+            },
+            options: [10, 25, 50],
+          }}
         />
         <DataTable
           table={table}

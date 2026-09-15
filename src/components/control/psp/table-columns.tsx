@@ -1,106 +1,174 @@
 "use client";
 
+import Link from "next/link";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ChevronRight, ShieldCheck } from "lucide-react";
-import type { PspConnection } from "@/types/control/psp-connection";
-import type { MerchantCode } from "@/types/merchant";
-import { MERCHANT_LABEL } from "@/lib/mock/merchant";
-import {
-  PROVIDER_LABEL,
-  HEALTH_LABEL,
-  healthTone,
-} from "@/lib/control/psp";
-import { formatDateTime } from "@/lib/control/format";
-import { StatusSpine } from "@/components/control/shared/status-spine";
+import { Activity, CircleAlert, Clock3, Eye, Hourglass, Power, Settings2 } from "lucide-react";
+
 import { ControlStatusBadge } from "@/components/control/shared/status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatDateTime } from "@/lib/control/format";
+import {
+  APPROVAL_LABEL,
+  HEALTH_LABEL,
+  METHOD_LABEL,
+  PROVIDER_LABEL,
+  approvalTone,
+  enabledLabel,
+  enabledTone,
+  healthTone,
+  lastTestLabel,
+} from "@/lib/control/psp";
+import type { ApprovalState, PspConnectionListRow } from "@/types/control/psp-connection";
 import "@/types/table-meta";
 
-function isMerchantCode(v: string | null): v is MerchantCode {
-  return v !== null && v in MERCHANT_LABEL;
+function ApprovalIcon({ state }: { state: ApprovalState }) {
+  if (state === "pending") return <Hourglass className="size-3.5" />;
+  if (state === "unavailable") return <CircleAlert className="size-3.5" />;
+  return <Clock3 className="size-3.5" />;
 }
 
-export const pspColumns: ColumnDef<PspConnection>[] = [
+export const pspColumns: ColumnDef<PspConnectionListRow>[] = [
   {
-    id: "spine",
+    id: "identity",
+    header: "Connection",
     enableSorting: false,
-    meta: { headClassName: "w-1.5 p-0", cellClassName: "w-1.5 p-0" },
-    header: () => null,
     cell: ({ row }) => (
-      <div className="flex h-full items-stretch pl-1.5">
-        <StatusSpine tone={healthTone(row.original.health)} />
+      <div className="min-w-0">
+        <span className="block truncate text-lg font-semibold leading-[22px] text-foreground">
+          {row.original.merchantName}
+        </span>
+        <span className="text-data block truncate text-lg leading-[22px] text-grey-500">
+          {row.original.pspConnectionId}
+        </span>
       </div>
     ),
   },
   {
     accessorKey: "psp",
     header: "PSP",
-    enableSorting: true,
+    enableSorting: false,
+    meta: { headClassName: "w-[120px]", cellClassName: "w-[120px]" },
     cell: ({ row }) => (
-      <span className="text-sm font-semibold text-foreground">
-        {PROVIDER_LABEL[row.original.psp]}
-      </span>
+      <span className="text-lg font-semibold text-foreground">{PROVIDER_LABEL[row.original.psp]}</span>
     ),
   },
   {
-    id: "redirect",
-    header: "โหมด",
-    enableSorting: false,
-    cell: () => (
-      <span className="inline-flex items-center gap-1 text-xs font-semibold text-grey-700">
-        <ShieldCheck className="size-3.5 text-success" />
-        Redirect-only · SAQ A
-      </span>
-    ),
-  },
-  {
-    id: "tenant",
-    header: "บริษัท",
-    enableSorting: false,
-    cell: ({ row }) => {
-      const code = row.original.merchantId;
-      return (
-        <span className="text-sm text-foreground">
-          {isMerchantCode(code) ? MERCHANT_LABEL[code] : "—"}
-        </span>
-      );
-    },
-  },
-  {
-    id: "enabledMethods",
-    header: "ช่องทางที่เปิดใช้",
+    id: "methods",
+    header: "ช่องทาง",
     enableSorting: false,
     cell: ({ row }) => (
-      <span className="text-sm text-foreground">
-        {row.original.enabledMethods.join(", ")}
+      <span className="text-lg text-foreground">
+        {row.original.enabledMethods.map((method) => METHOD_LABEL[method]).join(", ") || "-"}
       </span>
     ),
   },
   {
-    accessorKey: "lastWebhookAt",
-    header: "Webhook ล่าสุด",
-    enableSorting: true,
-    cell: ({ row }) => (
-      <span className="text-data text-xs text-grey-600">
-        {formatDateTime(row.original.lastWebhookAt)}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "health",
-    header: "สถานะ",
-    enableSorting: true,
+    accessorKey: "isEnabled",
+    header: "Enabled",
+    enableSorting: false,
+    meta: { headClassName: "w-[120px]", cellClassName: "w-[120px]" },
     cell: ({ row }) => (
       <ControlStatusBadge
-        tone={healthTone(row.original.health)}
-        label={HEALTH_LABEL[row.original.health]}
+        tone={enabledTone(row.original.isEnabled)}
+        label={enabledLabel(row.original.isEnabled)}
+        icon={<Power className="size-3.5" />}
       />
     ),
   },
   {
-    id: "chevron",
+    accessorKey: "health",
+    header: "Health",
     enableSorting: false,
-    meta: { headClassName: "w-12", cellClassName: "w-12", ignoreRowClick: true },
+    meta: { headClassName: "w-[120px]", cellClassName: "w-[120px]" },
+    cell: ({ row }) => (
+      <ControlStatusBadge
+        tone={healthTone(row.original.health)}
+        label={HEALTH_LABEL[row.original.health]}
+        icon={<Activity className="size-3.5" />}
+      />
+    ),
+  },
+  {
+    id: "lastTest",
+    header: "ทดสอบล่าสุด",
+    enableSorting: false,
+    meta: { headClassName: "w-[180px]", cellClassName: "w-[180px]" },
+    cell: ({ row }) => (
+      <div>
+        <span className="block text-lg text-foreground">{lastTestLabel(row.original.lastTestResult)}</span>
+        <span className="text-data block text-lg text-grey-500">
+          {formatDateTime(row.original.lastTestedAt ?? "")}
+        </span>
+      </div>
+    ),
+  },
+  {
+    accessorKey: "approvalState",
+    header: "Approval",
+    enableSorting: false,
+    meta: { headClassName: "w-[140px]", cellClassName: "w-[140px]" },
+    cell: ({ row }) => (
+      <ControlStatusBadge
+        tone={approvalTone(row.original.approvalState)}
+        label={APPROVAL_LABEL[row.original.approvalState]}
+        icon={<ApprovalIcon state={row.original.approvalState} />}
+      />
+    ),
+  },
+  {
+    id: "actions",
+    enableSorting: false,
+    meta: { headClassName: "w-32", cellClassName: "w-32", ignoreRowClick: true },
     header: () => null,
-    cell: () => <ChevronRight className="size-4 text-grey-500" />,
+    cell: ({ row }) => (
+      <TooltipProvider>
+        <div className="flex items-center justify-end gap-1.5">
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                render={
+                  <Link
+                    href={`/control/psp/read?id=${encodeURIComponent(row.original.pspConnectionId)}`}
+                  />
+                }
+                nativeButton={false}
+                variant="ghost"
+                size="icon-lg"
+                className="size-10 cursor-pointer bg-grey-600/8 text-grey-700 hover:bg-grey-800 hover:text-white focus-visible:bg-grey-800 focus-visible:text-white"
+                aria-label={`ดูรายละเอียด ${row.original.pspConnectionId}`}
+              >
+                <Eye className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>ดูรายละเอียด</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                render={
+                  <Link
+                    href={`/control/psp/settings?merchantId=${encodeURIComponent(row.original.merchantId)}`}
+                  />
+                }
+                nativeButton={false}
+                variant="ghost"
+                size="icon-lg"
+                className="size-10 cursor-pointer bg-grey-600/8 text-grey-700 hover:bg-grey-800 hover:text-white focus-visible:bg-grey-800 focus-visible:text-white"
+                aria-label={`ตั้งค่าร้านค้า ${row.original.merchantName}`}
+              >
+                <Settings2 className="size-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>ตั้งค่าร้านค้า</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    ),
   },
 ];

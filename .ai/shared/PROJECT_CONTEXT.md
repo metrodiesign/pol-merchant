@@ -1,110 +1,105 @@
-# Project Context
+> Canonical source for ALL agents (Claude loads via .claude/rules stub; Codex/OpenCode/Pi read directly).
+> แก้ที่นี่ที่เดียว — single source of truth.
 
-> Canonical product context สำหรับทุก agent. Source/config ปัจจุบันอยู่ repository root.
+# Product Overview
 
-## Product
+> Source: `docs/reference/payment-orchestration-modules.md` (รายละเอียดเต็มของ Payments + ภาค 8 =
+> Canonical Payment API **target design normative**, รับเข้า 2026-07-05) ·
+> `docs/reference/platform-modules.md` (module map + สถานะ as-built ต่อฟีเจอร์ + target เชิง API
+> ทุกโมดูล + ทะเบียน ADR ค้างตัดสิน)
 
-POL Merchant เป็น merchant operations portal ที่รวม Merchant, Admin, control-plane,
-organization, order, transaction, policy และ checkout surfaces ใน Next.js application เดียว.
+## Purpose
 
-Repository นี้พัฒนาและ deploy เป็นอิสระ. ไม่ใช้ parity, sync หรือ exact-mirror contract กับ
-repository อื่น.
+**Internal Insurance Sales + Payment Platform (captive)** — SaaS รับชำระค่าเบี้ยประกันภัย multi-tenant
+ที่ให้บริษัทในเครือ (vPrivilege / vCommerce / vSouvenir) ขายเอกสารประกัน (`Product` = เอกสารประกันที่ขายได้
+1 รายการ — ใบสมัคร/กรมธรรม์/ต่ออายุ/สลักหลัง — ที่มาจาก**แคตตาล็อกกลาง**อีกระบบหนึ่ง mirror ผลลัพธ์
+`docs/reference/vcentralpay-sp-quick-reference.pdf` §5.2 ทั้ง 32 field ตรง ๆ ไม่ใช่ generic catalog item
+และไม่ใช่ "แผนประกัน/quote เบี้ย" — catalogue เป็น**read-only over HTTP** (`GET /api/v1/products` เท่านั้น,
+scope ด้วย `SaleCode` ที่ต้องส่งมาทุกครั้ง; ปัจจุบันเอกสารเข้าระบบผ่าน migration/seed เท่านั้น ส่วน
+adapter ดึงจาก SP ต้นทางยังเป็นงานเฟสถัดไป — `CreateProductCommand` เป็น write seam ที่จองไว้ให้ importer
+ตัวนั้น ยังไม่มี implementation จริง, spec `products-sp-53-alignment` 2026-07-30) ให้ลูกค้า พร้อมรับชำระเงินผ่าน PSP ที่ถือใบอนุญาตอยู่แล้ว
+(2C2P + Omise/Opn) แบบ **redirect-only** โดย **เงินจริงไม่วิ่งผ่านแพลตฟอร์ม** — เรา "ใช้" PSP ไม่ใช่
+"เป็น" PSP; แพลตฟอร์มเป็น sales + payment channel เท่านั้น — **ไม่ออกกรมธรรม์เอง** (ดู Non-Goals)
 
-## Users
+ระบบคือ scope เดียวกัน มี 5 โมดูล (Products · Cart · Checkout · Orders · Payments) คุยกันผ่าน
+**Mediator (martinothamar/Mediator)** แบบ modular ไม่อ้างถึงกันตรง — โมดูลที่ build out มากสุดคือ Payments
 
-- Merchant operators จัดการผู้ใช้ บทบาท รายการคำสั่งซื้อ ธุรกรรม และกรมธรรม์
-- Admin users จัดการ Admin user/role และโครงสร้างองค์กร
-- Control-plane users ตรวจ approvals, audit, PSP, routing, webhooks และ reports
-- Public users เข้าหน้า register และ checkout
+## Target Users — actor model (canon 2026-09-06)
 
-## Current source of truth
+ระบบแบ่งเป็น 2 ชื่อเรียกที่ใช้คนละความหมาย:
 
-```text
-public/
-src/
-  app/
-  components/
-  hooks/
-  lib/
-  types/
-package.json
-package-lock.json
-next.config.ts
-tsconfig.json
-vitest.config.ts
-```
+| ชื่อ | คืออะไร | ในโค้ด |
+|---|---|---|
+| **Payment Orchestration** | ตัวกลางชำระเงินไปยัง PSP (2C2P / Omise) — session, routing, webhook, credential vault, monitor, audit | pol-core backend + Admin Console (`pol-admin`) |
+| **vCentralPay** | ระบบของตัวแทน/นายหน้าประกันภัย สร้างคำสั่งซื้อประกันแล้วส่งลิงก์ให้ลูกค้าจ่าย โดยใช้ Payment Orchestration กำหนดการชำระเงิน | Merchant Console (`pol-tenant`) + โมดูล Products → Carts → Orders |
 
-เป็น single root package. ไม่มี npm workspaces, `apps/`, `packages/` หรือ package aliases
-`@pol/ui` / `@pol/shared`. Internal imports ใช้ `@/`.
+Actor 3 ฝ่าย + tier การยืนยันตัวตน 2 ระดับ:
 
-## Route contracts
+| Actor | หน้าที่ | Tier / login | มองเห็นข้อมูล |
+|---|---|---|---|
+| **ตัวแทน / นายหน้าประกันภัย** (`Merchants.Domain.Users.User`, มี `SaleCode` + `LicenseNumber`) | สร้างคำสั่งซื้อจาก vCentralPay ให้ลูกค้าจ่าย | **Tier 1** — Microsoft Entra External ID (CIAM), scheme `MerchantUserMicrosoft` / cookie `__Host-mch_session` | **เฉพาะลูกค้า/คำสั่งซื้อที่ตัวเองสร้าง** — query filter ของ `Order` กรอง `MerchantId` และ `InitiatingMerchantUserId == user` ทุก read path (list/detail/resend/cancel/reconciliation/payment session) |
+| **ลูกค้า** | จ่ายเงินตามคำสั่งซื้อที่สร้างไว้แล้วเท่านั้น | ไม่มี login — opaque summary token ในลิงก์ (TTL 72 ชม.) คือ capability, anonymous + rate-limit | เฉพาะ order ของ token นั้น ไม่เห็น merchant/session |
+| **พนักงานภายใน / แอดมิน** (`Admins.Domain.Users.User`) | ผู้ใช้และผู้ดูแล Payment Orchestration: provision merchant, PSP credential/routing, monitor, audit — และสร้างคำสั่งซื้อแทน originator ได้ (`InitiatingAudience = PlatformAdmin`) | **Tier 0** — Microsoft Entra ID workforce (tenant-pinned, JIT), scheme `AdminMicrosoft` / cookie `__Host-adm_session` | ทุก merchant ที่ accessible (`Super` = ทั้งหมด, `Scoped` = ที่ assign) |
 
-Canonical Merchant routes:
+**Role ใช้ร่วมกันระหว่าง Tier 0 และ Tier 1** เพราะสองระดับเรียกฟีเจอร์ commerce ชุดเดียวกัน: catalog `iam.*` มี
+`Scope` 3 ค่า — `Platform` (control plane, Tier 0), `Merchant` (จัดการผู้ใช้/บทบาทในร้าน, Tier 1) และ **`Shared`**
+(group `payment` = `payment.view/create/redirect`) — endpoint commerce ทั้ง 15 จุด (cart → order → payment session,
+policy `dual-console`) gate ด้วย key `payment.*` เดียวไม่ว่าจะเข้ามาจาก session ระดับใด; role scope `Shared`
+(seed `merchant_staff`) assign ได้ทั้ง `admin.RoleAssignments` และ `merch.RoleAssignments`; role ฝั่ง Platform/Merchant
+ถือ key ของฝั่งตนรวม `Shared` ได้ แต่ข้ามฝั่งกันยังคง fail-closed. แกน role (action) กับ tier/visibility (เห็นอะไร)
+ยัง orthogonal: role บอกว่าทำอะไรได้ ส่วน tier + query filter บอกว่าเห็นแถวไหน
 
-```text
-/user/list
-/user/new
-/user/read
-/user/edit
-/role/list
-/role/create
-/role/read
-/role/edit
-```
+## Problem It Solves
 
-Legacy `/merchant/user/*` และ `/merchant/role/*` ตอบ permanent `308` ไป canonical route
-และรักษา query string. Admin routes `/admin/user/*` และ `/admin/role/*` ยังคงอยู่.
+บริษัทในเครือต้องรับชำระเงินออนไลน์ แต่การ "เป็น" PSP เองทำให้เข้าข่ายใบอนุญาตประเภทที่ 3 (ธปท.)
+และขยาย PCI scope. แพลตฟอร์มนี้แก้ด้วยโมเดล **captive + ไม่ถือเงิน**: เป็น merchant/orchestrator ที่
+redirect ไปหน้า PSP เท่านั้น → คง **PCI SAQ A** รายนิติบุคคล, ใบอนุญาตอยู่ที่ PSP, เงิน settle จาก PSP
+เข้าบัญชี merchant ของแต่ละบริษัทโดยตรง
 
-Root `/` redirect `307` ไป `/dashboard`. `/register` เป็น public. Protected surfaces ใช้
-auth state/guard ตาม layout ของแต่ละกลุ่ม.
+## Key Features
 
-คำว่า `Merchant`, `MerchantCode`, `MerchantUser*` และ backend path `/producer/*`
-เป็น domain/API vocabulary ที่ยังถูกต้อง. ห้ามตีความว่า semantic name เหล่านี้เป็น directory
-namespace ที่ต้องยุบ.
+- **5 SaaS modules** ผ่าน Mediator — Products → Cart → Checkout → Orders → Payments (จบที่ emit `PaymentPaid`)
+- **`Product` = เอกสารประกันในแคตตาล็อกกลาง** — 32 field mirror §5.2 ตรง (`TotalPremium` เป็นราคาขาย,
+  `decimal(19,2)` ล้วน ไม่ใช้ `Money`/currency column เพราะ source system เป็น THB อย่างเดียว), read-only
+  over HTTP (list เดียว ผ่าน `GET /products`, ไม่มี create/update endpoint), source of truth ของราคา/
+  เงื่อนไขมาจากแถวนี้เสมอ
+- **ผู้เอาประกันต่อ `OrderItem`** — จับข้อมูลผู้เอาประกัน (ชื่อ/เลขบัตร/วันเกิด) 1 คนต่อ 1 line ตอน checkout,
+  snapshot ราคา/เงื่อนไขจาก `Product` เข้า line ไม่อ่านจาก `Product` สดๆ ภายหลัง; list/summary mask เลขบัตร
+  (โชว์ 4 ตัวท้าย), detail read เผยเต็มพร้อมเขียน append-only reveal audit ต่อ line, customer summary
+  ไม่โชว์วันเกิดเลย
+- **2 console คนละแอป** — Merchant Console (public-facing, 3 บริษัทใช้ร่วม) + Admin Console (internal-only) บน backend/data ชุดเดียว เพื่อลด blast radius
+- **PSP adapter** 2C2P + Omise/Opn — redirect-only ครบ 3 ช่องทาง (บัตร / PromptPay / ผ่อน), normalize เป็นสัญญาเดียว
+- **Webhook = source of truth** — verify ลายเซ็น + idempotent + fetch-to-confirm ก่อนอัปเดตสถานะ (ไม่เชื่อ browser redirect)
+- **Multi-tenant provisioning** — Admin สร้าง tenant + เก็บ PSP credential ลง vault (encrypt, แยก key ต่อ tenant)
+- **Identity & RBAC** — Microsoft Entra SSO (workforce สำหรับ Admin, CIAM สำหรับ Merchant user; tenant-pinned default-deny), register→approve (Tenant), maker-checker สำหรับ action อ่อนไหว
+- **Notification (background)** — Orders ส่งลิงก์หน้าสรุปผ่าน Message Queue → Worker, retry backoff → DLQ, ลิงก์มี TTL
+- **Reconciliation = reporting**, retry/dunning, idempotency, audit log (append-only)
 
-## Authentication and API
+## Business Objectives
 
-Frontend ไม่เก็บ bearer token. Admin session อยู่ใน backend-managed httpOnly cookie.
+- รับชำระ redirect-only ได้ครบ 3 ช่องทางทั้ง 2 PSP โดย **คง SAQ A** (ไม่แตะข้อมูลบัตรบนโดเมนเรา)
+- **Multi-tenant isolation** เด็ดขาดที่ app layer (EF global query filter deny-default ต่อ merchant + sealed write
+  guard, ทุก query/write กรอง `MerchantId`; ไม่ใช่ SQL RLS อีกต่อไป — supersede 2026-07-19, spec
+  `rls-to-query-filter`) — backend ร่วมกันแต่ข้อมูลไม่รั่ว
+- คงสถานะ **captive + ไม่ถือเงิน** → อยู่นอก funds flow เสมอ (ไม่เข้าข่ายใบอนุญาตประเภทที่ 3)
+- จ่ายไม่ผิด/ไม่ซ้ำ: idempotency + verify amount/currency — **ยอดของ payment session มาจากแถว `Order`
+  เท่านั้น** (client ส่งยอดมาไม่ได้) + เทียบกับ **ยอดที่ PSP รายงานว่าเก็บจริง** ก่อน mark paid
+  (spec `captive-payment-alignment`, 2026-07-26; การเทียบตอน Orders รับ `PaymentPaid` ยังอยู่แต่เป็น
+  defence-in-depth — เมื่อยอด session มาจาก order แล้วมันเทียบค่าเดียวกับตัวเอง)
 
-- `AdminMe`: `src/types/auth.ts`
-- `getMe` และ authenticated fetch helpers: `src/lib/api/admin/auth.ts`
-- `AuthProvider`: `src/components/auth/auth-provider.tsx`
-- `AuthGuard`: `src/components/auth/auth-guard.tsx`
+## Non-Goals — ฟังก์ชันที่ "ห้าม implement"
 
-Development variables อยู่ root `.env.local` ซึ่งสร้างจาก `.env.example`:
+> อยู่นอก scope โดยตั้งใจ — เพิ่มเข้ามาจะเปลี่ยนสถานะทางกฎหมาย + ขยาย PCI scope ทันที
+> **เจอ requirement/ticket/ไอเดียที่นำไปสู่ข้อใดข้างล่าง → หยุดและถามก่อน อย่า implement เอง** แม้จะดู "เป็นประโยชน์"
 
-```text
-ADMIN_API_ORIGIN=https://localhost:5001
-NEXT_PUBLIC_API_ORIGIN=https://localhost:5001
-```
-
-เมื่อ `ADMIN_API_ORIGIN` มีค่า:
-
-```text
-/admin/*    -> ADMIN_API_ORIGIN/api/v1/admins/*
-/producer/* -> ADMIN_API_ORIGIN/api/v1/merchants/*
-/api/*      -> ADMIN_API_ORIGIN/api/*
-```
-
-Production ปกติใช้ same-origin reverse proxy และไม่สร้าง Next rewrite.
-
-## Runtime
-
-- Node.js 22.19.0
-- npm 11.12.1
-- Next.js 16.3.1
-- React 19.2.4
-- HTTPS development port 3002
-- Production standalone output
-- Docker non-root UID 1001, port 3002
-
-Root scripts เป็น interface เดียวสำหรับ install, audit, test, lint, typecheck, build และ start.
-
-## Quality floor
-
-CI รัน guard tests, secret scan, spec trace, production dependency audit, Vitest, ESLint,
-TypeScript, production build และ HTTP/development smoke ตาม OS. Git hooks ตรวจ secrets,
-Evidence และ protected/force pushes.
-
-งาน non-trivial ใช้ requirements -> design -> tasks -> implementation. Historical specs และ
-retrospectives เก็บ state ตามเวลาที่สร้าง; ไม่ใช่ current architecture.
+1. **ห้าม settlement / payout engine** — ไม่มี money ledger / wallet / float / escrow / disbursement (อยู่นอก funds flow เสมอ)
+2. **ห้าม billing / เก็บค่าบริการ** — ใช้ฟรี ไม่มี subscription / invoice / usage metering / fee deduction
+3. **ห้าม public/self-serve onboarding** — allowlist เฉพาะ vPrivilege / vCommerce / vSouvenir ไม่ต่อ KYB/AML provider ภายนอก
+4. **ห้ามแตะข้อมูลบัตร** — ไม่ collect/store/transmit/tokenize PAN, ไม่มี card field/hosted-fields/iframe/Omise.js บนโดเมนเรา
+5. **ห้ามสร้างฟังก์ชันของ PSP/acquirer เอง** — ไม่มี acquiring, card scheme, 3DS/ACS, payment processing (เราใช้ PSP ไม่ใช่เป็น)
+6. **ห้าม flow แบบ non-redirect** — ไม่ display-QR/iframe/hosted-fields บนหน้าเรา ใช้ full redirect ไปหน้า PSP เท่านั้น (คง SAQ A)
+7. **Reconciliation = reporting เท่านั้น** — ห้ามลอจิกที่เคลื่อนเงิน/ปรับยอดจริง
+8. **ห้าม policy issuance ใดๆ** — ไม่มี policy-number generation, policy document/PDF, issuance workflow —
+   แม้มี `OrderItem` + ข้อมูลผู้เอาประกันครบแล้วก็ตาม (insurance-pivot) การเก็บข้อมูล 2 อย่างนี้ไม่ใช่การ
+   issue policy; จบที่ "รับชำระเสร็จ → emit `PaymentPaid`" เสมอ ไม่มีขั้นถัดไป — รวมถึงห้าม claims /
+   renewal / endorsement / underwriting / commission / reinsurance

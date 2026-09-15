@@ -3,36 +3,11 @@
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import { login, microsoftLogin } from "@/lib/api/admin/auth";
-import { merchantUserLogin, merchantUserMicrosoftLogin } from "@/lib/api/user";
+import { beginLogin } from "@/lib/api/admin/auth";
+import { merchantUserMicrosoftLogin } from "@/lib/api/merchant/user";
 
-// landing หลัง login = /dashboard (admin landing จริง). backend ต้องมี /dashboard ใน AdminSession:ReturnUrlAllowlist
-// (ไม่งั้น reject -> falls back /). ดู coordination item ใน spec.
+// landing หลัง login = /dashboard (admin landing จริง) — SPA เก็บ returnTo เองคู่ PKCE state (API ไม่รับ returnTo)
 const RETURN_TO = "/dashboard";
-
-// โลโก้ Google สี (เลียนแบบปุ่ม GIS official ของเวอร์ชันเก่า)
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 18 18" aria-hidden className="size-[18px]">
-      <path
-        fill="#4285F4"
-        d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"
-      />
-      <path
-        fill="#34A853"
-        d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.82.96 4.05l3.01-2.33Z"
-      />
-      <path
-        fill="#EA4335"
-        d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"
-      />
-    </svg>
-  );
-}
 
 // โลโก้ Microsoft (4 สี่เหลี่ยมมาตรฐาน)
 function MicrosoftIcon() {
@@ -50,7 +25,7 @@ function MicrosoftIcon() {
 const SSO_BUTTON_CLASS =
   "h-12 w-full justify-center gap-2 bg-white text-crop-blue hover:bg-white/90 hover:text-crop-blue";
 
-// server-side OIDC BFF: login = full-page navigate ไป backend แล้วกลับมาที่ returnTo (ไม่ใช่ fetch).
+// OAuth code + PKCE: full-page navigate ไป /oauth/authorize ของ API แล้วกลับมาที่ /auth/callback (ไม่ใช่ fetch).
 export function LoginView() {
   return (
     <main className="flex min-h-dvh flex-col bg-white">
@@ -95,21 +70,12 @@ export function LoginView() {
             aria-label="สำหรับพนักงาน"
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
-            <h2 className="text-center text-lg font-semibold text-white">สำหรับพนักงาน</h2>
+            <h2 className="text-center text-2xl font-semibold text-white">สำหรับพนักงาน</h2>
             <Button
               type="button"
               size="lg"
               className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => login(RETURN_TO)}
-            >
-              <GoogleIcon />
-              เข้าสู่ระบบด้วย Google
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              className={`mt-3 ${SSO_BUTTON_CLASS}`}
-              onClick={() => microsoftLogin(RETURN_TO)}
+              onClick={() => void beginLogin(RETURN_TO)}
             >
               <MicrosoftIcon />
               เข้าสู่ระบบด้วย Microsoft
@@ -120,20 +86,11 @@ export function LoginView() {
             aria-label="สำหรับตัวแทน/นายหน้า"
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
-            <h2 className="text-center text-lg font-semibold text-white">สำหรับตัวแทน/นายหน้า</h2>
+            <h2 className="text-center text-2xl font-semibold text-white">สำหรับตัวแทน/นายหน้า</h2>
             <Button
               type="button"
               size="lg"
               className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => merchantUserLogin()}
-            >
-              <GoogleIcon />
-              เข้าสู่ระบบด้วย Google
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              className={`mt-3 ${SSO_BUTTON_CLASS}`}
               onClick={() => merchantUserMicrosoftLogin()}
             >
               <MicrosoftIcon />

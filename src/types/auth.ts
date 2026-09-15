@@ -1,19 +1,20 @@
-/** ระดับสิทธิ์ของ admin จาก backend (GET /admin/me). */
-export type AdminTier = "Super" | "Scoped";
-
-/** tenant ที่ admin เข้าถึงได้ — Super = unrestricted; Scoped = รายการ tenant ที่ถูก assign. */
-export interface AccessibleTenants {
-  isUnrestricted: boolean;
-  tenants?: { id: string; code: string }[];
-}
-
 /**
- * payload ของ GET /admin/me (200). FE ไม่ถือ token — identity มาจาก httpOnly session cookie
- * ที่ backend จัดการ (server-side OIDC BFF). backend ยังไม่ส่ง name/picture (ดู coordination item).
+ * identity ที่ประกอบจาก GET /api/v1/me + GET /api/v1/me/access (employee stack ใหม่).
+ * SPA ถือ access/refresh token (OAuth code + PKCE) ใน localStorage (แชร์ทุกแท็บ) แล้วส่ง Bearer ทุก request.
+ * คงชื่อ field adminId/permissions เพื่อไม่แตะ consumer.
+ * stack ใหม่ไม่มี tier: hasPlatformAccess = มี platform role ACTIVE อย่างน้อยหนึ่ง (ไม่ได้แปลว่าเห็นทุก merchant);
+ * merchant scope เลือกผ่าน refresh พร้อม merchant_id (ยังไม่ใช้ใน SPA).
  */
 export interface AdminMe {
   adminId: string;
-  email: string;
-  tier: AdminTier;
-  accessibleTenants: AccessibleTenants;
+  displayName: string | null;
+  email: string | null;
+  hasPlatformAccess: boolean;
+  permissions: string[];
 }
+
+export type AuthStatus = "loading" | "authed" | "anon" | "forbidden" | "error";
+
+export type AuthBootstrapResult =
+  | { status: "authed"; me: AdminMe }
+  | { status: "anon" | "forbidden" | "error"; me: null };

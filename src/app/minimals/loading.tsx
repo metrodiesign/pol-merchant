@@ -1,4 +1,4 @@
-import { Logo } from "@/components/layout/logo";
+import { Logo } from "@pol/ui/logo";
 
 export default function Loading() {
   return (
