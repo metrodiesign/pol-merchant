@@ -6,12 +6,18 @@
 
 import React, { useEffect, useState } from "react";
 
-import { getAgentSession, type AgentSessionResult } from "@/lib/api/merchant/auth";
+import {
+  getAgentSession,
+  logoutAgent,
+  type AgentSessionResult,
+} from "@/lib/api/merchant/auth";
 
 export default function AgentLandingPage(): React.JSX.Element {
   const [result, setResult] = useState<AgentSessionResult | { status: "loading" }>({
     status: "loading",
   });
+  const [logoutPending, setLogoutPending] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -27,6 +33,17 @@ export default function AgentLandingPage(): React.JSX.Element {
       active = false;
     };
   }, []);
+
+  const handleLogout = async () => {
+    setLogoutPending(true);
+    setLogoutError(false);
+    try {
+      await logoutAgent();
+    } catch {
+      setLogoutError(true);
+      setLogoutPending(false);
+    }
+  };
 
   const message =
     result.status === "loading"
@@ -45,6 +62,28 @@ export default function AgentLandingPage(): React.JSX.Element {
       <p className="text-lg text-muted-foreground" role="status">
         {message}
       </p>
+      {result.status === "authed" && (
+        <>
+          {logoutError && (
+            <p className="text-sm text-error" role="alert">
+              ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={logoutPending}
+            aria-busy={logoutPending}
+            className="mt-4 inline-flex h-11 min-w-[160px] items-center justify-center rounded-control bg-primary px-5 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {logoutPending
+              ? "กำลังออกจากระบบ..."
+              : logoutError
+                ? "ลองออกจากระบบอีกครั้ง"
+                : "ออกจากระบบ"}
+          </button>
+        </>
+      )}
     </main>
   );
 }

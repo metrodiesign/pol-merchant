@@ -64,6 +64,11 @@ export interface AuthorizeParams {
   state: string;
   codeChallenge: string;
   redirectUri: string;
+  prompt?: "select_account";
+}
+
+export interface BeginLoginOptions {
+  prompt?: "select_account";
 }
 
 export type LoginCompletion =
@@ -87,7 +92,7 @@ export interface OAuthClient {
   readonly clientId: string;
   clampReturnTo(returnTo: string): string;
   buildAuthorizeUrl(params: AuthorizeParams): string;
-  beginLogin(returnTo?: string): Promise<void>;
+  beginLogin(returnTo?: string, options?: BeginLoginOptions): Promise<void>;
   /**
    * ถ้ามี PKCE state ค้างของ client นี้ คืนค่า `client` ที่ประกาศไว้ใน state (fallback = clientId ของตัวเอง
    * เมื่อ state เก่าไม่มี field); ไม่มี state -> null. ให้ resolvePendingClient เลือก client จากค่านี้ (spec §4.4).
@@ -108,7 +113,7 @@ export function createOAuthClient(config: OAuthClientConfig): OAuthClient {
   }
 
   /** URL เริ่ม authorization code + PKCE. */
-  function buildAuthorizeUrl({ state, codeChallenge, redirectUri }: AuthorizeParams): string {
+  function buildAuthorizeUrl({ state, codeChallenge, redirectUri, prompt }: AuthorizeParams): string {
     const query = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: redirectUri,
@@ -118,6 +123,7 @@ export function createOAuthClient(config: OAuthClientConfig): OAuthClient {
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
     });
+    if (prompt) query.set("prompt", prompt);
     return `${authorizePath}?${query}`;
   }
 
@@ -127,7 +133,10 @@ export function createOAuthClient(config: OAuthClientConfig): OAuthClient {
   }
 
   /** เริ่ม login: gen PKCE + state เก็บใน sessionStorage แล้ว full-page navigate ไป /oauth/authorize. */
-  async function beginLogin(returnTo: string = config.defaultReturnTo): Promise<void> {
+  async function beginLogin(
+    returnTo: string = config.defaultReturnTo,
+    options: BeginLoginOptions = {},
+  ): Promise<void> {
     const pkce: PkceState = {
       verifier: randomToken(),
       state: randomToken(),
@@ -139,6 +148,7 @@ export function createOAuthClient(config: OAuthClientConfig): OAuthClient {
       state: pkce.state,
       codeChallenge: await codeChallengeOf(pkce.verifier),
       redirectUri: callbackUri(),
+      prompt: options.prompt,
     });
   }
 
@@ -231,7 +241,9 @@ export function createOAuthClient(config: OAuthClientConfig): OAuthClient {
           tokenStore.setTokens(pair);
           return pair;
         }
-        if (res.status === 400) tokenStore.clearTokens();
+        if (res.status === 400 && (await oauthErrorOf(res)) === "invalid_grant") {
+          tokenStore.clearTokens();
+        }
         return null;
       } catch {
         return null;

@@ -3,7 +3,8 @@
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import { beginAgentLogin } from "@/lib/api/merchant/auth";
+import { beginLogin as beginAdminLogin } from "@/lib/api/admin/auth";
+import { beginAgentLogin, beginAgentRegistration } from "@/lib/api/merchant/auth";
 
 // โลโก้ Microsoft (4 สี่เหลี่ยมมาตรฐาน)
 function MicrosoftIcon() {
@@ -63,35 +64,46 @@ export function LoginView() {
       <div className="flex flex-1 items-start justify-center px-4 py-12">
         <div className="grid w-full max-w-3xl grid-cols-1 gap-4 md:grid-cols-2">
           <section
-            aria-label="ตัวแทนที่ลงทะเบียนแล้ว"
+            aria-label="สำหรับพนักงาน"
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
-            <h2 className="text-center text-2xl font-semibold text-white">ตัวแทนที่ลงทะเบียนแล้ว</h2>
-            <Button
-              type="button"
-              size="lg"
-              className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => void beginAgentLogin()}
-            >
-              <MicrosoftIcon />
-              เข้าสู่ระบบด้วย Microsoft
-            </Button>
+            <h2 className="text-center text-2xl font-semibold text-white">สำหรับพนักงาน</h2>
+            <div className="mt-8 flex min-h-[108px] flex-col gap-3">
+              <Button
+                type="button"
+                size="lg"
+                className={SSO_BUTTON_CLASS}
+                onClick={() => void beginAdminLogin()}
+              >
+                <MicrosoftIcon />
+                เข้าสู่ระบบด้วย Microsoft
+              </Button>
+            </div>
           </section>
 
           <section
-            aria-label="ลงทะเบียนตัวแทนใหม่"
+            aria-label="สำหรับตัวแทน/นายหน้า"
             className="flex min-h-[260px] flex-col justify-center rounded-2xl bg-crop-blue p-8 shadow-card"
           >
-            <h2 className="text-center text-2xl font-semibold text-white">ลงทะเบียนตัวแทนใหม่</h2>
-            <Button
-              type="button"
-              size="lg"
-              className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => void beginAgentLogin()}
-            >
-              <MicrosoftIcon />
-              ลงทะเบียนด้วย Microsoft
-            </Button>
+            <h2 className="text-center text-2xl font-semibold text-white">สำหรับตัวแทน/นายหน้า</h2>
+            <div className="mt-8 flex min-h-[108px] flex-col gap-3">
+              <Button
+                type="button"
+                size="lg"
+                className={SSO_BUTTON_CLASS}
+                onClick={() => void beginAgentLogin()}
+              >
+                เข้าสู่ระบบ
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                className={SSO_BUTTON_CLASS}
+                onClick={() => void beginAgentRegistration()}
+              >
+                ลงทะเบียน
+              </Button>
+            </div>
           </section>
         </div>
       </div>

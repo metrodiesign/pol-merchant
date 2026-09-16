@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { CircleCheck, Clock } from "lucide-react";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
 import { Fieldset, Field, Label, Description } from "@/components/shared/fieldset";
@@ -117,6 +118,9 @@ function WaitView() {
             <br />
             กรุณารอการอนุมัติจากผู้ดูแลระบบ
           </p>
+          <Link href="/login" className={primaryButtonClass}>
+            กลับสู่หน้าหลัก
+          </Link>
         </div>
       </div>
     </PageShell>

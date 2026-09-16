@@ -78,6 +78,112 @@ describe("two clients — storage key isolation (AC2)", () => {
   });
 });
 
+describe("authorize prompt", () => {
+  it("Login ไม่ส่ง prompt และยังใช้ PKCE S256", () => {
+    const url = new URL(
+      merchant.client.buildAuthorizeUrl({
+        state: "s",
+        codeChallenge: "c",
+        redirectUri: "https://localhost:3002/auth/callback",
+      }),
+    );
+
+    expect(url.searchParams.has("prompt")).toBe(false);
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+  });
+
+  it("Register ส่ง prompt=select_account เพียงค่าเดียวและยังใช้ PKCE S256", () => {
+    const url = new URL(
+      merchant.client.buildAuthorizeUrl({
+        state: "s",
+        codeChallenge: "c",
+        redirectUri: "https://localhost:3002/auth/callback",
+        prompt: "select_account",
+      }),
+    );
+
+    expect(url.searchParams.getAll("prompt")).toEqual(["select_account"]);
+    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
+  });
+
+  it("beginLogin ส่ง typed prompt โดยคง PKCE state ของ client เดิม", async () => {
+    await merchant.client.beginLogin("/", { prompt: "select_account" });
+
+    const url = new URL(window.location.href);
+    const pkce = JSON.parse(sessionStorage.getItem("pol_merchant_pkce")!) as {
+      client: string;
+      state: string;
+    };
+    expect(url.searchParams.get("prompt")).toBe("select_account");
+    expect(url.searchParams.get("state")).toBe(pkce.state);
+    expect(pkce.client).toBe("pol-merchant");
+  });
+
+  it("admin default ไม่ได้รับ prompt จาก shared OAuth change", async () => {
+    await admin.client.beginLogin("/");
+    expect(new URL(window.location.href).searchParams.has("prompt")).toBe(false);
+  });
+});
+
+describe("refresh OAuth error classification", () => {
+  const pair = {
+    accessToken: "at-old",
+    refreshToken: "rt-old",
+    expiresAt: Date.now() - 1,
+  };
+
+  it.each(["admin", "merchant"] as const)(
+    "%s: invalid_grant ล้าง token pair",
+    async (clientName) => {
+      const subject = clientName === "admin" ? admin : merchant;
+      subject.store.setTokens(pair);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }),
+        ),
+      );
+
+      await expect(subject.client.refreshTokens()).resolves.toBeNull();
+
+      expect(subject.store.getTokens()).toBeNull();
+    },
+  );
+
+  it.each([
+    ["admin", JSON.stringify({ error: "invalid_request" })],
+    ["admin", "not-json"],
+    ["merchant", JSON.stringify({ error: "invalid_request" })],
+    ["merchant", "not-json"],
+  ] as const)("%s: HTTP 400 body %s คง token pair", async (clientName, body) => {
+    const subject = clientName === "admin" ? admin : merchant;
+    subject.store.setTokens(pair);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(body, { status: 400 })));
+
+    await expect(subject.client.refreshTokens()).resolves.toBeNull();
+
+    expect(subject.store.getTokens()).toEqual(pair);
+  });
+
+  it.each(["admin", "merchant"] as const)(
+    "%s: HTTP 503 invalid_grant คง token pair",
+    async (clientName) => {
+      const subject = clientName === "admin" ? admin : merchant;
+      subject.store.setTokens(pair);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          new Response(JSON.stringify({ error: "invalid_grant" }), { status: 503 }),
+        ),
+      );
+
+      await expect(subject.client.refreshTokens()).resolves.toBeNull();
+
+      expect(subject.store.getTokens()).toEqual(pair);
+    },
+  );
+});
+
 describe("resolvePendingClient — callback เลือก client ถูกตัวจาก state (AC2)", () => {
   it("เลือก merchant เมื่อมี PKCE state ของ merchant ค้าง", async () => {
     await merchant.client.beginLogin("/");

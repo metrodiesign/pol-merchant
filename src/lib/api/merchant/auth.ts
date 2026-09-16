@@ -1,4 +1,4 @@
-import { createOAuthClient } from "@/lib/auth/oauth-client";
+import { createOAuthClient, withBearer } from "@/lib/auth/oauth-client";
 import { createTokenStore } from "@/lib/auth/token-store";
 
 // Agent (ตัวแทนที่อนุมัติแล้ว) auth client — OAuth authorization code + PKCE ผ่าน OpenIddict ของ pol-core
@@ -8,6 +8,7 @@ import { createTokenStore } from "@/lib/auth/token-store";
 // scope openid offline_access, session ตรวจด้วย GET /api/v1/me Bearer.
 
 const API_ORIGIN = process.env.NEXT_PUBLIC_API_ORIGIN ?? "";
+const AGENT_END_SESSION_URL = `${API_ORIGIN}/api/v1/auth/agents/logout`;
 
 /** token store ของ merchant (key แยกจาก admin pol_tokens). */
 export const merchantTokenStore = createTokenStore("pol_merchant_tokens");
@@ -32,6 +33,43 @@ export const merchantOAuthClient = merchantClient;
 
 /** เริ่ม login ตัวแทนที่อนุมัติแล้วด้วย OAuth code + PKCE (full-page navigate ไป /oauth/authorize). */
 export const beginAgentLogin = merchantClient.beginLogin;
+
+/** เริ่มสมัครตัวแทนด้วย OAuth/PKCE เดิม แต่ให้ CIAM แสดง account chooser ทุกครั้ง. */
+export function beginAgentRegistration(): Promise<void> {
+  return merchantClient.beginLogin("/agent", { prompt: "select_account" });
+}
+
+/**
+ * revoke platform session ก่อนล้าง merchant state แล้วไป Agent CIAM end-session endpoint.
+ * 401 ต้อง refresh แล้ว retry; transient failure ต้องคง state ไว้ให้ผู้ใช้ retry.
+ */
+export async function logoutAgent(): Promise<void> {
+  const pair = merchantTokenStore.getTokens();
+  if (pair) {
+    let response = await fetch(
+      "/api/v1/auth/logout",
+      withBearer({ method: "POST" }, pair.accessToken),
+    );
+    if (response.status === 401) {
+      const fresh = await merchantClient.refreshTokens();
+      if (fresh) {
+        response = await fetch(
+          "/api/v1/auth/logout",
+          withBearer({ method: "POST" }, fresh.accessToken),
+        );
+      } else if (merchantTokenStore.getTokens()) {
+        throw new Error("merchant-logout-failed");
+      }
+    }
+    if (response.status !== 204 && merchantTokenStore.getTokens()) {
+      throw new Error("merchant-logout-failed");
+    }
+  }
+
+  merchantTokenStore.clearTokens();
+  sessionStorage.removeItem("pol_merchant_pkce");
+  window.location.href = AGENT_END_SESSION_URL;
+}
 
 /** fetch API ด้วย Bearer ของ merchant session (401 -> refresh -> retry). */
 export const merchantFetch = merchantClient.authedFetch;
