@@ -118,7 +118,7 @@ function WaitView() {
             <br />
             กรุณารอการอนุมัติจากผู้ดูแลระบบ
           </p>
-          <Link href="/" className={primaryButtonClass}>
+          <Link href="/login" className={primaryButtonClass}>
             กลับสู่หน้าหลัก
           </Link>
         </div>
