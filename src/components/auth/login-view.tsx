@@ -4,7 +4,6 @@ import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { beginAgentLogin } from "@/lib/api/merchant/auth";
-import { merchantUserMicrosoftLogin } from "@/lib/api/merchant/user";
 
 // โลโก้ Microsoft (4 สี่เหลี่ยมมาตรฐาน)
 function MicrosoftIcon() {
@@ -88,7 +87,7 @@ export function LoginView() {
               type="button"
               size="lg"
               className={`mt-8 ${SSO_BUTTON_CLASS}`}
-              onClick={() => merchantUserMicrosoftLogin()}
+              onClick={() => void beginAgentLogin()}
             >
               <MicrosoftIcon />
               ลงทะเบียนด้วย Microsoft
