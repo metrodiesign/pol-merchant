@@ -9,6 +9,7 @@ const me: AdminMe = {
   email: "admin@example.test",
   hasPlatformAccess: true,
   permissions: ["merchant.view"],
+  realm: "admin",
 };
 
 describe("PSP route RBAC redirect", () => {

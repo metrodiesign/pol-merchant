@@ -1,3 +1,5 @@
+import type { AuthRealm } from "@/types/auth";
+
 export interface NavItem {
   title: string;
   path: string;
@@ -9,6 +11,8 @@ export interface NavItem {
   disabled?: boolean;
   /** ซ่อน item และ descendants เมื่อ effective permission ไม่มี key นี้. */
   requiredPermission?: string;
+  /** undefined หมายถึง admin เท่านั้น; ระบุ realm เพื่อเผย item ให้ realm นั้นโดยชัดเจน. */
+  realms?: readonly AuthRealm[];
   /** When true, the item is considered active on its path AND any sub-paths. */
   deepMatch?: boolean;
   /**
@@ -39,11 +43,13 @@ export interface NavGroup {
 export function filterNavGroups(
   groups: readonly NavGroup[],
   permissions: readonly string[],
+  realm: AuthRealm = "admin",
 ): NavGroup[] {
   const allowed = new Set(permissions);
 
   const filterItems = (items: readonly NavItem[]): NavItem[] =>
     items.flatMap((item) => {
+      if (!(item.realms ?? ["admin"]).includes(realm)) return [];
       if (item.requiredPermission && !allowed.has(item.requiredPermission)) return [];
       const children = item.children ? filterItems(item.children) : undefined;
       if (item.children && children?.length === 0) return [];
@@ -60,7 +66,7 @@ export const navConfig: NavGroup[] = [
   // ── Main ─────────────────────────────────────────────────────────────────
   {
     subheader: "", // no label — dashboard sits alone above the first section
-    items: [{ title: "แดชบอร์ด", path: "/dashboard", icon: "dashboard" }],
+    items: [{ title: "แดชบอร์ด", path: "/dashboard", icon: "dashboard", realms: ["admin", "agent"] }],
   },
 
   // ── กรมธรรม์ ───────────────────────────────────────────────────────────────

@@ -100,9 +100,9 @@ describe("global typography scale", () => {
 
     assert.deepEqual(counts, {
       base: 1356,
-      lg: 75,
-      xl: 67,
-      "2xl": 14,
+      lg: 74,
+      xl: 68,
+      "2xl": 13,
       "3xl": 25,
       "4xl": 15,
       "5xl": 0,

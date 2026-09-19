@@ -65,6 +65,7 @@ export function toAdminMe(me: MeResponse, access: AccessResponse): AdminMe {
     email: me.email ?? null,
     hasPlatformAccess: access.hasPlatformAccess,
     permissions: access.permissions,
+    realm: "admin",
   };
 }
 
@@ -93,7 +94,17 @@ export function shouldRedirectToLogin(status: AuthStatus): boolean {
 
 /** authenticated session ที่ไม่มี effective permission ต้องแสดง Inline 403 โดยไม่ mount protected child. */
 export function shouldShowForbidden(status: AuthStatus, me: AdminMe | null): boolean {
-  return status === "forbidden" || (status === "authed" && me !== null && me.permissions.length === 0);
+  return status === "forbidden" || (status === "authed" && me?.realm === "admin" && me.permissions.length === 0);
+}
+
+const AGENT_ROUTE_PREFIXES = ["/dashboard"];
+
+/** agent ใช้ shell เดียวได้เฉพาะ dashboard; path admin อื่นต้องไม่ค้างหรือวนกลับ login. */
+export function agentRedirectPath(me: AdminMe | null, pathname: string): string | null {
+  if (me?.realm !== "agent") return null;
+  return AGENT_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+    ? null
+    : "/dashboard";
 }
 
 /** 204 = logout สำเร็จ (revoke ทั้ง access/refresh), 401 = token ตายอยู่แล้ว (terminal logged-out). */

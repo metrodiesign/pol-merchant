@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 
 import { ErrorCard, errorButtonClass } from "@/components/error/error-screen";
-import { shouldRedirectToLogin, shouldShowForbidden } from "@/lib/api/admin/auth";
+import { agentRedirectPath, shouldRedirectToLogin, shouldShowForbidden } from "@/lib/api/admin/auth";
 import { useAuth } from "./auth-provider";
 
 /** loading placeholder — กัน flash ของ shell ก่อน /api/v1/me ตอบ. */
@@ -29,8 +29,13 @@ export function AuthGuard({
   const { me, status } = useAuth();
 
   useEffect(() => {
-    if (shouldRedirectToLogin(status)) window.location.href = "/login";
-  }, [status]);
+    if (shouldRedirectToLogin(status)) {
+      window.location.href = "/login";
+      return;
+    }
+    const redirect = agentRedirectPath(me, window.location.pathname);
+    if (redirect) window.location.replace(redirect);
+  }, [me, status]);
 
   if (shouldShowForbidden(status, me)) {
     const content = (

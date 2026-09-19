@@ -81,7 +81,7 @@ Boundary contract:
 - Verifier ปฏิเสธ import ที่อ้าง Merchant workspace เดิมและ package-to-Admin import.
 
 Admin route contract ตรวจ `/`, `/admin/user/list`, `/checkout/[sessionId]`, `/dashboard` และ
-`/minimals/subpaths/[...segments]`; `/register` ต้องไม่ถูก expose. `/merchant/*` และ `/producer/*`
+`/minimals/subpaths/[...segments]`; `/register`, `/register/verify` และ `/register/pending` เป็น public routes สำหรับ flow ลงทะเบียนตัวแทน. `/merchant/*` และ `/producer/*`
 เป็น Merchant-management และ producer-domain capabilities ภายใน Admin จึงต้องคงไว้.
 
 Merchant frontend มี canonical owner แยกที่

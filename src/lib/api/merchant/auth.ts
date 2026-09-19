@@ -21,10 +21,9 @@ const merchantClient = createOAuthClient({
   tokenStore: merchantTokenStore,
   pkceStorageKey: "pol_merchant_pkce",
   refreshLockName: "pol_merchant_refresh",
-  // returnTo หลัง login ของตัวแทน -> /agent (landing ที่ตรวจ session ด้วย merchant token).
-  // ห้ามใช้ "/" เพราะ "/" redirect ไป /dashboard (admin shell, guard อ่าน pol_tokens) -> ตัวแทนเด้ง /login.
-  returnToAllowlist: ["/agent"],
-  defaultReturnTo: "/agent",
+  // agent ใช้ dashboard shell เดียวกับ admin แต่ token store และ realm แยกกัน.
+  returnToAllowlist: ["/dashboard"],
+  defaultReturnTo: "/dashboard",
   loginPath: "/login",
 });
 
@@ -33,11 +32,6 @@ export const merchantOAuthClient = merchantClient;
 
 /** เริ่ม login ตัวแทนที่อนุมัติแล้วด้วย OAuth code + PKCE (full-page navigate ไป /oauth/authorize). */
 export const beginAgentLogin = merchantClient.beginLogin;
-
-/** เริ่มสมัครตัวแทนด้วย OAuth/PKCE เดิม แต่ให้ CIAM แสดง account chooser ทุกครั้ง. */
-export function beginAgentRegistration(): Promise<void> {
-  return merchantClient.beginLogin("/agent", { prompt: "select_account" });
-}
 
 /**
  * revoke platform session ก่อนล้าง merchant state แล้วไป Agent CIAM end-session endpoint.
@@ -77,6 +71,7 @@ export const merchantFetch = merchantClient.authedFetch;
 /** payload GET /api/v1/me (เฉพาะ field ที่ใช้ใน landing ตัวแทน). */
 export interface AgentMe {
   accountId: string | null;
+  displayName: string | null;
   email: string | null;
 }
 
@@ -88,11 +83,11 @@ export type AgentSessionResult =
 /** map ผล GET /api/v1/me -> สถานะ session ตัวแทน (pure, ทดสอบ branch ได้ตรง). */
 export function agentResultFromMe(
   httpStatus: number,
-  body: { accountId?: string | null; email?: string | null } | null,
+  body: { accountId?: string | null; displayName?: string | null; email?: string | null } | null,
 ): AgentSessionResult {
   if (httpStatus === 401) return { status: "anon" };
   if (httpStatus !== 200 || body === null) return { status: "error" };
-  return { status: "authed", me: { accountId: body.accountId ?? null, email: body.email ?? null } };
+  return { status: "authed", me: { accountId: body.accountId ?? null, displayName: body.displayName ?? null, email: body.email ?? null } };
 }
 
 /** ตรวจ session ตัวแทนด้วย merchant token: ไม่มี token = anon ทันที; ไม่เด้ง 401 เอง ให้ landing ตัดสิน. */

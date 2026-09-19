@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { accountUser } from "@/lib/mock/topbar";
 import { useAuth } from "@/components/auth/auth-provider";
-import { logout } from "@/lib/api/admin/auth";
+import { logoutCurrentRealm } from "@/lib/auth/logout";
 
 // Nav icons — SVG paths extracted from minimals.cc live source
 function IconHome() {
@@ -109,9 +109,9 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
     setLogoutPending(true);
     setLogoutFailed(false);
     try {
-      await logout();
+      const result = await logoutCurrentRealm();
       clearAuthState();
-      window.location.href = "/login";
+      if (!result.navigated) window.location.href = "/login";
     } catch {
       setLogoutFailed(true);
     } finally {
@@ -179,7 +179,7 @@ export function AccountDrawer({ variant = "white" }: AccountDrawerProps) {
           <p className="text-base text-grey-600">{me?.email ?? accountUser.email}</p>
           {me && (
             <span className="mt-1 rounded-md bg-primary/10 px-2 py-0.5 text-base font-semibold text-primary">
-              {me.hasPlatformAccess ? "Platform Access" : "No Platform Access"}
+              {me.realm === "agent" ? "ตัวแทน/นายหน้า" : me.hasPlatformAccess ? "Platform Access" : "No Platform Access"}
             </span>
           )}
 

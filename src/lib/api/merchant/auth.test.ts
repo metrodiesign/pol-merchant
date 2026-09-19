@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   agentResultFromMe,
   beginAgentLogin,
-  beginAgentRegistration,
   logoutAgent,
   merchantOAuthClient,
   merchantTokenStore,
@@ -60,14 +59,14 @@ describe("agentResultFromMe", () => {
   it("200 + body -> authed พร้อม email/accountId", () => {
     expect(agentResultFromMe(200, { accountId: "a1", email: "x@y.z" })).toEqual({
       status: "authed",
-      me: { accountId: "a1", email: "x@y.z" },
+      me: { accountId: "a1", displayName: null, email: "x@y.z" },
     });
   });
 
   it("200 field หาย -> authed แต่ค่าเป็น null (ไม่ throw)", () => {
     expect(agentResultFromMe(200, {})).toEqual({
       status: "authed",
-      me: { accountId: null, email: null },
+      me: { accountId: null, displayName: null, email: null },
     });
   });
 
@@ -95,20 +94,16 @@ describe("merchantOAuthClient", () => {
     expect(url).toContain("client_id=pol-merchant");
   });
 
-  it("clampReturnTo: /agent ผ่าน, ค่านอก allowlist -> default /agent", () => {
-    expect(merchantOAuthClient.clampReturnTo("/agent")).toBe("/agent");
-    expect(merchantOAuthClient.clampReturnTo("/")).toBe("/agent");
-    expect(merchantOAuthClient.clampReturnTo("/dashboard")).toBe("/agent");
+  it("clampReturnTo: /dashboard ผ่าน, ค่านอก allowlist -> default /dashboard", () => {
+    expect(merchantOAuthClient.clampReturnTo("/dashboard")).toBe("/dashboard");
+    expect(merchantOAuthClient.clampReturnTo("/")).toBe("/dashboard");
+    expect(merchantOAuthClient.clampReturnTo("/agent")).toBe("/dashboard");
   });
 
-  it("Login ไม่มี prompt แต่ Register ส่ง prompt=select_account", async () => {
+  it("Login ไม่มี prompt และกลับ dashboard", async () => {
     await beginAgentLogin();
     expect(new URL(location.href, location.origin).searchParams.has("prompt")).toBe(false);
-
-    await beginAgentRegistration();
-    const registerUrl = new URL(location.href, location.origin);
-    expect(registerUrl.searchParams.getAll("prompt")).toEqual(["select_account"]);
-    expect(registerUrl.searchParams.get("code_challenge_method")).toBe("S256");
+    expect(JSON.parse(sessionStorage.getItem("pol_merchant_pkce")!).returnTo).toBe("/dashboard");
   });
 });
 
