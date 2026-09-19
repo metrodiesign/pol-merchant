@@ -53,8 +53,8 @@ function MinimalsShell({ children }: { children: React.ReactNode }) {
   const fullBleed =
     pathname === "/minimals/blank" || pathname === "/minimals/kanban";
   const visibleNavGroups = useMemo(
-    () => filterNavGroups(minimalsNavConfig, me?.permissions ?? []),
-    [me?.permissions],
+    () => filterNavGroups(minimalsNavConfig, me?.permissions ?? [], me?.realm ?? "admin"),
+    [me?.permissions, me?.realm],
   );
 
   // Nav layout/color are driven by the settings drawer (persisted via provider).

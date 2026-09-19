@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import { logout } from "@/lib/api/admin/auth";
+import { logoutCurrentRealm } from "@/lib/auth/logout";
 
 // sign-out: เรียก BFF logout แล้วเด้งกลับ /login เมื่อได้ 204 หรือ terminal logged-out state (401/403).
 export default function LogoutPage() {
@@ -12,8 +12,8 @@ export default function LogoutPage() {
   const attemptLogout = useCallback(async () => {
     setFailed(false);
     try {
-      await logout();
-      router.replace("/login");
+      const result = await logoutCurrentRealm();
+      if (!result.navigated) router.replace("/login");
     } catch {
       setFailed(true);
     }
@@ -21,9 +21,9 @@ export default function LogoutPage() {
 
   useEffect(() => {
     let cancelled = false;
-    void logout()
-      .then(() => {
-        if (!cancelled) router.replace("/login");
+    void logoutCurrentRealm()
+      .then((result) => {
+        if (!cancelled && !result.navigated) router.replace("/login");
       })
       .catch(() => {
         if (!cancelled) setFailed(true);

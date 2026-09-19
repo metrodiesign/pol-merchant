@@ -314,7 +314,7 @@ describe("toAdminMe", () => {
         { accountId: "a", displayName: "สมชาย", email: "s@x" },
         { hasPlatformAccess: true, permissions: ["p1"] },
       ),
-    ).toEqual({ adminId: "a", displayName: "สมชาย", email: "s@x", hasPlatformAccess: true, permissions: ["p1"] });
+    ).toEqual({ adminId: "a", displayName: "สมชาย", email: "s@x", hasPlatformAccess: true, permissions: ["p1"], realm: "admin" });
   });
   it("email null คงไว้", () => {
     expect(toAdminMe({ accountId: "a", displayName: null, email: null }, { hasPlatformAccess: false, permissions: [] }).email).toBeNull();
@@ -343,7 +343,7 @@ describe("getMe", () => {
     const fetchMock = fetchByPath({});
     await expect(getMe()).resolves.toEqual({
       status: "authed",
-      me: { adminId: meBody.accountId, displayName: "สมชาย", email: "somchai@viriyah.co.th", hasPlatformAccess: false, permissions: accessBody.permissions },
+      me: { adminId: meBody.accountId, displayName: "สมชาย", email: "somchai@viriyah.co.th", hasPlatformAccess: false, permissions: accessBody.permissions, realm: "admin" },
     });
     expect(bearerOf(fetchMock.mock.calls[0]![1] as RequestInit)).toBe("Bearer at1");
   });
@@ -379,10 +379,10 @@ describe("guards", () => {
     expect(shouldRedirectToLogin("error")).toBe(false);
   });
   it("shouldShowForbidden: forbidden หรือ authed ที่ permissions ว่าง", () => {
-    const me = { adminId: "a", displayName: null, email: null, hasPlatformAccess: false, permissions: [] };
+    const me = { adminId: "a", displayName: null, email: null, hasPlatformAccess: false, permissions: [], realm: "admin" as const };
     expect(shouldShowForbidden("forbidden", null)).toBe(true);
     expect(shouldShowForbidden("authed", me)).toBe(true);
-    expect(shouldShowForbidden("authed", { ...me, permissions: ["x"] })).toBe(false);
+    expect(shouldShowForbidden("authed", { ...me, permissions: ["x"], realm: "admin" })).toBe(false);
   });
   it("isLogoutSuccessStatus: 204/401 เท่านั้น", () => {
     expect(isLogoutSuccessStatus(204)).toBe(true);

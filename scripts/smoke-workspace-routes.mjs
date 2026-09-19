@@ -116,6 +116,8 @@ try {
     assertNotFoundIsFalse,
   );
   await probe("Admin /register", "http://127.0.0.1:3002/register", assertNotFoundIsFalse);
+  await probe("Admin /register/verify", "http://127.0.0.1:3002/register/verify", assertNotFoundIsFalse);
+  await probe("Admin /register/pending", "http://127.0.0.1:3002/register/pending", assertNotFoundIsFalse);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;

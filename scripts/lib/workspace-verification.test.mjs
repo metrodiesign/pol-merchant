@@ -939,6 +939,8 @@ test("REQ-2.12, REQ-5.3: normalize และ fingerprint root page routes แบ
     "/checkout/[sessionId]/page": "app/checkout/[sessionId]/page.js",
     "/minimals/subpaths/[...segments]/page": "app/minimals/subpaths/[...segments]/page.js",
     "/register/page": "app/register/page.js",
+    "/register/pending/page": "app/register/pending/page.js",
+    "/register/verify/page": "app/register/verify/page.js",
   });
 
   assert.deepEqual(routes, [
@@ -948,10 +950,12 @@ test("REQ-2.12, REQ-5.3: normalize และ fingerprint root page routes แบ
     "/dashboard",
     "/minimals/subpaths/[...segments]",
     "/register",
+    "/register/pending",
+    "/register/verify",
   ]);
   assert.match(pageRouteFingerprint(routes), /^[0-9a-f]{64}$/);
   assert.notEqual(pageRouteFingerprint(routes), pageRouteFingerprint([...routes].reverse()));
-  assert.throws(() => assertAdminRouteIdentity(routes), /Admin route identity must equal 102 routes/);
+  assert.throws(() => assertAdminRouteIdentity(routes), /Admin route identity must equal 103 routes/);
 });
 
 test("REQ-4.17: manifest ต้องเป็น JSON object", () => {
@@ -967,6 +971,8 @@ test("REQ-4.2, REQ-4.3 และ REQ-4.18: Admin route guard จับ required 
     "/dashboard",
     "/minimals/subpaths/[...segments]",
     "/register",
+    "/register/pending",
+    "/register/verify",
   ];
   assert.doesNotThrow(() => assertRequiredAdminRoutes(required));
   assert.throws(

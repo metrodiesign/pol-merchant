@@ -19,7 +19,7 @@ const noPermissionMe: AdminMe = {
   displayName: null,
   email: "employee@viriyah.co.th",
   hasPlatformAccess: false,
-  permissions: [],
+  permissions: [], realm: "admin",
 };
 
 beforeEach(() => {

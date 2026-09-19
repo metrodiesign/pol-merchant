@@ -31,8 +31,8 @@ const EXPECTED_LOCAL_PACKAGES = new Map([
   ["node_modules/@pol/ui", "packages/ui"],
 ]);
 const REMOVED_APPLICATION_NAMES = ["admin", "merchant"];
-const EXPECTED_ROUTE_COUNT = 102;
-const EXPECTED_ROUTE_SHA256 = "7af2be4ef79a19fc3b3a4af69ea2485d39933fafad787bccc25c8854c3682bda";
+const EXPECTED_ROUTE_COUNT = 103;
+const EXPECTED_ROUTE_SHA256 = "95cd321c159815d5b5906673732fc3dfe67118c21c62b0f00064b7cca1ef5462";
 const FIXTURE_START = "active-reference-fixture:start";
 const FIXTURE_END = "active-reference-fixture:end";
 const NEGATIVE_FIXTURE_SUFFIX = ["scripts", "lib", "workspace-verification.test.mjs"].join("/");
@@ -224,6 +224,8 @@ export function assertRequiredAdminRoutes(adminRoutes) {
     "/dashboard",
     "/minimals/subpaths/[...segments]",
     "/register",
+    "/register/pending",
+    "/register/verify",
   ];
   const missing = [];
 

@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
-import { getMe } from "@/lib/api/admin/auth";
+import { bootstrapAuth } from "@/lib/auth/bootstrap";
 import type { AdminMe, AuthStatus } from "@/types/auth";
 
 export interface AuthContextValue {
@@ -42,7 +42,7 @@ export function AuthProvider({
   useEffect(() => {
     let active = true;
     const version = bootstrapVersion.current;
-    getMe().then((result) => {
+    bootstrapAuth().then((result) => {
       if (active && version === bootstrapVersion.current) setState(result);
     });
     return () => {

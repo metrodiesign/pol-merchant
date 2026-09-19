@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { beginLogin as beginAdminLogin } from "@/lib/api/admin/auth";
-import { beginAgentLogin, beginAgentRegistration } from "@/lib/api/merchant/auth";
+import { beginAgentLogin } from "@/lib/api/merchant/auth";
 
 // โลโก้ Microsoft (4 สี่เหลี่ยมมาตรฐาน)
 function MicrosoftIcon() {
@@ -95,14 +96,9 @@ export function LoginView() {
               >
                 เข้าสู่ระบบ
               </Button>
-              <Button
-                type="button"
-                size="lg"
-                className={SSO_BUTTON_CLASS}
-                onClick={() => void beginAgentRegistration()}
-              >
+              <Link href="/register" className={`inline-flex items-center ${SSO_BUTTON_CLASS}`}>
                 ลงทะเบียน
-              </Button>
+              </Link>
             </div>
           </section>
         </div>

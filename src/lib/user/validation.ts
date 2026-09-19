@@ -73,7 +73,7 @@ export function validateMerchantUserForm(
   if (!form.phoneNumber.trim())
     errors.phoneNumber = "กรุณากรอกหมายเลขโทรศัพท์";
   else if (!isThaiPhone(form.phoneNumber))
-    errors.phoneNumber = "ต้องเป็นเบอร์มือถือไทย (06x, 08x, 09x) 10 หลัก";
+    errors.phoneNumber = "กรุณากรอกเบอร์มือถือไทย 10 หลัก เช่น 0812345678";
 
   if (!form.email.trim()) errors.email = "กรุณากรอกอีเมล";
   else if (!isEmail(form.email)) errors.email = "รูปแบบอีเมลไม่ถูกต้อง";
